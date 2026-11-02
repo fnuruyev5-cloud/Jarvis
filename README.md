@@ -1,52 +1,43 @@
-# F2 JARVIS — Free Neural TTS
+# F2 JARVIS — Əlavə modul
 
-Bu versiyada ElevenLabs çıxarılıb. AI cavabları Groq, səs çıxışı isə Microsoft Edge-in onlayn neural TTS xidmətinə qoşulan açıq mənbəli Node paketi ilə işləyir. Bu üsul ElevenLabs API açarı tələb etmir. Xidmət internet bağlantısından və Microsoft endpointinin işlək qalmasından asılıdır; rəsmi, limitsiz API zəmanəti yoxdur.
+Bu ZIP mövcud layihəni əvəz etmir. İçindəki iki fayl əsas layihəyə əlavə olunur.
 
-## Daxil edilən kişi səsləri
-- Azərbaycan: `az-AZ-BabekNeural`
-- Türk: `tr-TR-AhmetNeural`
-- İngilis: `en-US-GuyNeural`
-- Rus: `ru-RU-DmitryNeural`
-- Alman, fransız, ispan, italyan, portuqal və ərəb dilləri üçün də uyğun kişi səsləri seçilir.
+## Fayllar
+- `jarvis-addon.js` — “Hey Jarvis”, səsli söhbət dövrü, danışıq və kamera görüntüsünü backend-ə göndərmə.
+- `jarvis-addon.css` — əlavə idarəetmə panelinin görünüşü.
+- `INSTALL-AZ.md` — quraşdırma təlimatı.
 
-Azərbaycan dili üçün Microsoft-un rəsmi səs siyahısında `az-AZ-BabekNeural` kişi səsi göstərilir: https://learn.microsoft.com/azure/ai-services/speech-service/language-support?tabs=tts
+## Quraşdırma
+1. ZIP-i açın.
+2. `jarvis-addon.js` və `jarvis-addon.css` fayllarını layihənin `public` qovluğuna qoyun. Əgər `index.html` kök qovluqdadırsa, faylları onun yanına da qoya bilərsiniz.
+3. `index.html` faylında `</head>` sətrindən əvvəl əlavə edin:
+   `<link rel="stylesheet" href="/jarvis-addon.css">`
+4. `</body>` sətrindən əvvəl əlavə edin:
+   `<script src="/jarvis-addon.js" defer></script>`
+5. GitHub-a yükləyin və Render deploy-un bitməsini gözləyin.
 
-## GitHub-a yükləmə
-ZIP-i aç və aşağıdakı faylları GitHub `Jarvis` reposunun `main` branch-ində root qovluğa yükləyərək köhnə eyni adlı faylları əvəz et:
-- `index.html`
-- `style.css`
-- `app.js`
-- `face.js` (hologram üz animasiyası)
-- `server.js`
-- `package.json`
-- `.env.example`
-- `README.md`
+Əgər faylları `public` qovluğuna qoymusunuzsa, yuxarıdakı URL-lər uyğundur. Kök qovluğa qoymusunuzsa və server statik faylları kökdən təqdim edirsə, yenə eyni yollar işləyə bilər; 404 olarsa yolu server quruluşuna uyğun dəyişin.
 
-## Render
-Render → service → Environment:
-- `GROQ_API_KEY` — əvvəlki Groq açarın (mövcud dəyəri saxla)
-- `GROQ_MODEL` — `openai/gpt-oss-120b`
-- `GROQ_STT_MODEL` — `whisper-large-v3-turbo`
+## Vacib uyğunluq qeydləri
+- Mövcud `/api/chat` endpoint-i POST JSON qəbul etməli və cavabda `reply`, `response`, `answer`, `message` və ya `text` sahələrindən birini qaytarmalıdır.
+- Mövcud `/api/speak` endpoint-i POST `{ "text": "..." }` qəbul edib audio faylı (MP3 və s.) qaytarmalıdır. Əgər endpoint JSON qaytarırsa, mövcud server API-sinə uyğunlaşdırmaq lazımdır.
+- Kamera görüntüsünün həqiqi AI analizi üçün ayrıca `POST /api/vision` endpoint-i lazımdır. Bu əlavə modul kameranı açır və şəkli göndərir, lakin mövcud backend-də vision endpoint yoxdursa, analiz işləməyəcək. Mətn modeli şəkli avtomatik görə bilmir.
+- “Hey Jarvis” brauzerin Web Speech API funksiyasından istifadə edir. Səhifə açıq qalmalı, HTTPS olmalı və mikrofon icazəsi verilməlidir. Android brauzerlərində davamlı tanıma bəzən sistem tərəfindən dayandırıla bilər.
+- Brauzerlər təhlükəsizlik səbəbindən səhifə açılanda avtomatik mikrofon və səs başladılmasına icazə verməyə bilər. İlk dəfə **Başlat / Dinlə** düyməsinə toxunmaq lazımdır.
+- “Stop Jarvis” demək və ya Dayandır düyməsinə toxunmaq dinləməni dayandırır.
+- Heç bir API açarını bu fayllara yazmayın. Açarlar yalnız Render Environment-də qalmalıdır.
 
-ElevenLabs üçün heç bir dəyişən lazım deyil. Əvvəl əlavə etdiyin `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL_ID` dəyişənlərini silə bilərsən.
-
-Build Command: `npm install`
-Start Command: `npm start`
-Root Directory: boş
-
-Sonra Manual Deploy → Deploy latest commit.
-
-## Yoxlama
-`https://jarvis-5okr.onrender.com/api/health` aç. Burada `voiceConfigured: true` və `voiceProvider: "Microsoft Edge Neural TTS"` görünməlidir.
-
-## Yeni səsli rejim
-- Mikrofon düyməsinə bir dəfə basaraq dinləməni aktiv et.
-- “Hey Jarvis” (və ya “Jarvis”) de. Sonra sualını adi danışıqla ver.
-- JARVIS danışığını bitirdikdən sonra sükut fasiləsini avtomatik aşkarlayıb cavab verir və növbəti sualı dinləyir.
-- Söhbəti “Dayandır” düyməsi ilə bağla. İlk aktivləşdirmədə qısa açılış səsi və salamlaması səslənir.
-- Nitq tanıma brauzerin Web Speech API imkanından istifadə edir. Android Chrome-da sayt açıq və ön planda qalmalıdır; ekran sönəndə və ya başqa tətbiqə keçəndə brauzer mikrofonu dayandıra bilər. Bəzi cihazlarda Azərbaycan dili nitq tanıma dəstəyi zəifdirsə, Türk dili rejimi ehtiyat variant kimi yoxlanır.
-- Cavab səsi əvvəlkindən bir qədər sürətli və daha dərin tonda qurulub. Bu, ayrıca aktyor səsinin klonu deyil.
-- Microsoft Edge TTS kitabxanası Microsoft Edge-in onlayn danışıq xidmətinə API açarı olmadan qoşulur. Üçüncü tərəf paketidir, rəsmi Azure Speech SDK deyil; Microsoft xidməti dəyişərsə işləməyə bilər.
-- Azərbaycan dili üçün Babək kişi neural səsi seçilib; bu, ayrıca aktyor səsinin klonu deyil.
-- Digər dillər üçün uyğun kişi səsləri seçilir; hər dildə eyni səs kimliyi saxlanmaya bilər.
-- Supabase bu paketə qoşulmayıb.
+## Parametrlər
+`jarvis-addon.js` yüklənməzdən əvvəl `window.F2JARVIS_ADDON` təyin etməklə dili və endpoint-ləri dəyişə bilərsiniz. Məsələn:
+```html
+<script>
+window.F2JARVIS_ADDON = {
+  language: "az-AZ",
+  wakePhrase: "hey jarvis",
+  chatEndpoint: "/api/chat",
+  speakEndpoint: "/api/speak",
+  visionEndpoint: "/api/vision"
+};
+</script>
+<script src="/jarvis-addon.js" defer></script>
+```
