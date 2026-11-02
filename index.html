@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070b12">
+  <meta name="description" content="F2 JARVIS — şəxsi süni intellekt köməkçisi">
+  <title>F2 JARVIS — Personal AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body data-state="ready">
+  <header>
+    <a class="brand" href="/" aria-label="F2 JARVIS ana səhifə">
+      <span class="brand-mark">F2</span>
+      <b>F2 JARVIS<small>PERSONAL AI SYSTEM</small></b>
+    </a>
+    <div class="right">
+      <i></i><span id="status">Sistem yoxlanılır</span>
+      <button id="settings" class="icon-button" aria-label="Parametrlər">⚙</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span></span> F2 PERSONAL INTELLIGENCE</div>
+      <h1>Salam, mən <em>F2 JARVIS</em>.</h1>
+      <p>Şəxsi süni intellekt köməkçin. Danış və ya mesaj yaz.</p>
+
+      <div class="orbzone">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="orbit orbit-three"></div>
+        <div class="core-halo"></div>
+        <button id="mic" class="orb" aria-label="Mikrofonu başlat">
+          <span class="orb-inner"></span><span class="orb-glint"></span>
+        </button>
+        <div class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <label id="orbLabel">SİSTEM HAZIRDIR</label>
+      </div>
+
+      <div class="actions">
+        <button id="voice" class="primary"><span>🎙</span> Danışmağa başla</button>
+        <button id="stop" class="secondary">Səsi dayandır</button>
+      </div>
+      <div class="small">Mikrofonla danışıq • Groq AI • Çoxdilli nitq tanıma</div>
+    </section>
+
+    <section class="panel">
+      <div class="panelhead">
+        <div><small>PRIVATE AI SESSION</small><h2>Söhbət</h2></div>
+        <button id="clear">Təmizlə ↺</button>
+      </div>
+      <div id="messages" class="messages" aria-live="polite">
+        <article class="message assistant">
+          <b>F2 JARVIS</b>
+          <p>Salam! Mən F2 JARVIS. Sənə necə kömək edə bilərəm?</p>
+        </article>
+      </div>
+      <form id="form">
+        <input id="input" placeholder="Mesajını yaz..." autocomplete="off" maxlength="4000" aria-label="Mesaj">
+        <button aria-label="Göndər">➤</button>
+      </form>
+      <div class="foot"><span class="secure">● Təhlükəsiz server bağlantısı</span><span id="backend">Yoxlanılır…</span></div>
+    </section>
+  </main>
+
+  <footer>F2 JARVIS <span>•</span> ORIGINAL AI ASSISTANT</footer>
+
+  <dialog id="dlg">
+    <div class="dialog-head"><div><small>F2 SYSTEM</small><h2>Parametrlər</h2></div><button id="closeSettings" class="icon-button" aria-label="Bağla">✕</button></div>
+    <p>AI açarları serverdə saxlanılır. API açarını bu səhifəyə yazma.</p>
+    <label class="setting-row"><span><b>Cavabları səsləndir</b><small>Telefonun və ya brauzerin səsindən istifadə edir</small></span><input type="checkbox" id="speak" checked></label>
+    <label class="setting-row"><span><b>Səs seçimi</b><small>Uyğun cihaz səsini seç</small></span><select id="voiceSelect"><option value="auto">Avtomatik uyğun səs</option></select></label>
+    <div class="setting-note">Qeyd: Səsin təbiiliyi cihazda quraşdırılmış səslərdən asılıdır. Bu versiyada ayrıca premium TTS xidməti qoşulmayıb.</div>
+    <div class="setting-row"><span><b>Nitq tanıma</b><small id="speechBackend">Server yoxlanılır…</small></span><span class="live-dot"></span></div>
+  </dialog>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
