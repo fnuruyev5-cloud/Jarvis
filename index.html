@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#020711">
+  <meta name="description" content="F2 JARVIS — şəxsi süni intellekt köməkçisi">
+  <title>F2 JARVIS — Personal AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=4">
+</head>
+<body data-state="ready">
+<header class="topbar">
+  <a class="brand" href="/" aria-label="F2 JARVIS">
+    <span class="brand-mark">F2</span>
+    <span class="brand-name">F2 JARVIS<small>PERSONAL INTELLIGENCE</small></span>
+  </a>
+  <div class="top-actions">
+    <span class="connection"><i id="connectionDot"></i><span id="status">Sistem yoxlanılır</span></span>
+    <button id="settings" class="icon-button" type="button" aria-label="Parametrlər">⚙</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow"><span></span> ADVANCED ARTIFICIAL INTELLIGENCE</div>
+    <h1>Salam, mən <em>F2 JARVIS</em>.</h1>
+    <p class="subtitle">Dinləyirəm. Düşünürəm. Cavab verirəm.</p>
+
+    <div class="face-stage" id="faceStage" aria-label="F2 JARVIS süni intellekt siması">
+      <div class="energy-ring ring-one"></div>
+      <div class="energy-ring ring-two"></div>
+      <div class="energy-ring ring-three"></div>
+      <div class="face-aura"></div>
+      <div class="face-shell">
+        <svg class="circuit-lines" viewBox="0 0 340 440" aria-hidden="true">
+          <defs>
+            <linearGradient id="circuitGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#70f8ff"/>
+              <stop offset=".55" stop-color="#168dff"/>
+              <stop offset="1" stop-color="#a16bff"/>
+            </linearGradient>
+          </defs>
+          <g fill="none" stroke="url(#circuitGradient)" stroke-width="1.35" opacity=".8">
+            <path d="M170 8v65h-28v28h-37v32H66M170 8v65h28v28h37v32h39"/>
+            <path d="M22 145h48v24h28v24h24M318 145h-48v24h-28v24h-24"/>
+            <path d="M12 230h62v-20h28v-22h24M328 230h-62v-20h-28v-22h-24"/>
+            <path d="M34 305h44v-26h31v-24h24M306 305h-44v-26h-31v-24h-24"/>
+            <path d="M78 370h37v-25h30v-25h25M262 370h-37v-25h-30v-25h-25"/>
+            <path d="M55 110h34m162 0h34M28 265h40m204 0h40M94 395h32m88 0h32"/>
+          </g>
+          <g fill="#9cfaff">
+            <circle cx="66" cy="133" r="3"/><circle cx="274" cy="133" r="3"/>
+            <circle cx="74" cy="210" r="3"/><circle cx="266" cy="210" r="3"/>
+            <circle cx="109" cy="255" r="3"/><circle cx="231" cy="255" r="3"/>
+            <circle cx="115" cy="345" r="3"/><circle cx="225" cy="345" r="3"/>
+            <circle cx="170" cy="73" r="3"/>
+          </g>
+        </svg>
+
+        <div class="face">
+          <div class="forehead"></div>
+          <div class="temple temple-left"></div><div class="temple temple-right"></div>
+          <div class="brow brow-left"></div><div class="brow brow-right"></div>
+
+          <div class="eye eye-left">
+            <div class="eye-frame"><div class="iris"><div class="pupil"></div><i class="eye-glint"></i></div></div>
+            <span class="eye-lid"></span>
+          </div>
+          <div class="eye eye-right">
+            <div class="eye-frame"><div class="iris"><div class="pupil"></div><i class="eye-glint"></i></div></div>
+            <span class="eye-lid"></span>
+          </div>
+
+          <div class="nose-bridge"></div><div class="nose-tip"></div>
+          <div class="cheek cheek-left"></div><div class="cheek cheek-right"></div>
+          <div class="mouth-area">
+            <div class="upper-lip"></div>
+            <div class="mouth"><span class="mouth-inner"></span><span class="mouth-teeth"></span></div>
+            <div class="lower-lip"></div>
+          </div>
+          <div class="chin"></div>
+          <div class="face-scan"></div>
+        </div>
+        <div class="jaw-lines"></div>
+      </div>
+      <div class="face-caption"><span class="pulse-dot"></span><span id="orbLabel">SİSTEM HAZIRDIR</span></div>
+      <div class="sound-bars" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="voice" class="primary-button" type="button"><span class="mic-icon">🎙</span> Danışmağa başla</button>
+      <button id="stop" class="secondary-button" type="button">Səsi dayandır</button>
+    </div>
+    <div class="hint">Mikrofonla danış · Mesaj yaz · F2 JARVIS cavab versin</div>
+  </section>
+
+  <section class="chat-panel">
+    <div class="panel-heading">
+      <div><small>PRIVATE AI SESSION</small><h2>Söhbət</h2></div>
+      <button id="clear" class="clear-button" type="button">Təmizlə ↺</button>
+    </div>
+    <div id="messages" class="messages" aria-live="polite">
+      <article class="message assistant"><b>F2 JARVIS</b><p>Salam! Mən F2 JARVIS. Sənə necə kömək edə bilərəm?</p></article>
+    </div>
+    <form id="form" autocomplete="off">
+      <input id="input" type="text" placeholder="Mesajını yaz..." maxlength="4000" aria-label="Mesajını yaz">
+      <button id="send" type="submit" aria-label="Göndər">➤</button>
+    </form>
+    <div class="panel-footer"><span>● Təhlükəsiz server bağlantısı</span><span id="backend">Server yoxlanılır…</span></div>
+  </section>
+</main>
+
+<footer>F2 JARVIS <span>•</span> ORIGINAL AI ASSISTANT</footer>
+
+<dialog id="dlg">
+  <div class="dialog-heading">
+    <div><small>F2 SYSTEM</small><h2>Parametrlər</h2></div>
+    <button id="closeSettings" class="icon-button" type="button" aria-label="Bağla">✕</button>
+  </div>
+  <p class="dialog-copy">API açarlarını bu səhifəyə yazma. Onlar yalnız Render serverində saxlanmalıdır.</p>
+  <label class="setting-row">
+    <span><b>Cavabları səsləndir</b><small>JARVIS cavabını telefonun səsi ilə oxuyur</small></span>
+    <input type="checkbox" id="speak" checked>
+  </label>
+  <label class="setting-row">
+    <span><b>Səs seçimi</b><small>Cihazda mövcud olan səslər</small></span>
+    <select id="voiceSelect"><option value="auto">Avtomatik</option></select>
+  </label>
+  <div class="setting-note">Azərbaycan dili səsi cihazda yoxdursa, sistem uyğun türk və ya ingilis səsinə keçə bilər. Səs keyfiyyəti telefondakı nitq paketlərindən asılıdır.</div>
+  <div class="setting-row">
+    <span><b>Nitq tanıma</b><small id="speechBackend">Yoxlanılır…</small></span><span class="live-dot"></span>
+  </div>
+</dialog>
+
+<script src="/app.js?v=4" defer></script>
+</body>
+</html>
