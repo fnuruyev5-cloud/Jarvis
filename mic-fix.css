@@ -1,7 +1,52 @@
-/* Optional visual feedback for the existing microphone button */
-.is-listening, [data-f2-mic-state="listening"] {
-  border-color: #ff6458 !important;
-  box-shadow: 0 0 0 3px rgba(255,100,88,.18), 0 0 24px rgba(255,100,88,.35) !important;
+/* F2 JARVIS — responsive microphone button correction */
+:root { --f2-mic-size: 54px; }
+/* Do not let global button rules stretch the microphone control. */
+#micBtn, #mic, #mic-button, #microphoneBtn, [data-mic-button],
+button[aria-label*="microphone" i], button[aria-label*="mikrofon" i] {
+  box-sizing: border-box !important;
+  width: var(--f2-mic-size) !important;
+  min-width: var(--f2-mic-size) !important;
+  max-width: var(--f2-mic-size) !important;
+  height: var(--f2-mic-size) !important;
+  min-height: var(--f2-mic-size) !important;
+  max-height: var(--f2-mic-size) !important;
+  flex: 0 0 var(--f2-mic-size) !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  position: relative !important;
+  inset: auto !important;
+  translate: none !important;
+  transform: none;
+  border-radius: 50% !important;
+  overflow: hidden;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 2;
 }
-.is-listening { animation: f2-mic-pulse 1.4s ease-in-out infinite; }
-@keyframes f2-mic-pulse { 50% { filter: brightness(1.45); transform: scale(1.04); } }
+#micBtn svg, #mic svg, #mic-button svg, #microphoneBtn svg,
+[data-mic-button] svg { width: 23px !important; height: 23px !important; max-width: 23px; max-height: 23px; }
+#micBtn.is-listening, #mic.is-listening, #mic-button.is-listening,
+#microphoneBtn.is-listening, [data-mic-button].is-listening,
+button[aria-label*="microphone" i].is-listening,
+button[aria-label*="mikrofon" i].is-listening {
+  border-color: #ff6458 !important;
+  box-shadow: 0 0 0 3px rgba(255,100,88,.18), 0 0 22px rgba(255,100,88,.32) !important;
+}
+/* Keep the control in its existing composer row on narrow screens. */
+@media (max-width: 600px) {
+  :root { --f2-mic-size: 50px; }
+  #micBtn, #mic, #mic-button, #microphoneBtn, [data-mic-button],
+  button[aria-label*="microphone" i], button[aria-label*="mikrofon" i] {
+    flex-shrink: 0 !important;
+    align-self: center !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+  }
+}
+@media (max-width: 360px) { :root { --f2-mic-size: 46px; } }
