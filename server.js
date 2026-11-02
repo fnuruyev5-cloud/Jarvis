@@ -150,9 +150,9 @@ app.post("/api/speak", async (req, res) => {
     const voice = EDGE_VOICES[lang] || EDGE_VOICES.az;
     const tts = new EdgeTTS();
     const audioResult = await tts.generate(text, voice, {
-      pitch: -8,
-      rate: "-5%",
-      volume: "90%",
+      pitch: -10,
+      rate: "+5%",
+      volume: "100%",
       outputFormat: "audio-24khz-96kbitrate-mono-mp3",
       timeout: 45000
     });

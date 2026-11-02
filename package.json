@@ -1,9 +1,9 @@
 {
   "name": "f2-jarvis-free-tts",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
-  "description": "F2 JARVIS with Groq AI and free Microsoft Edge neural TTS",
+  "description": "F2 JARVIS with Groq AI, Edge Neural TTS, wake-word voice mode and holographic face",
   "scripts": {
     "start": "node server.js"
   },

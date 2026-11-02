@@ -1,241 +1,34 @@
-const $ = (id) => document.getElementById(id);
-const messagesEl = $("messages");
-const form = $("chatForm");
-const input = $("messageInput");
-const sendBtn = $("sendBtn");
-const voiceBtn = $("voiceBtn");
-const voiceLabel = $("voiceLabel");
-const stopBtn = $("stopBtn");
-const coreWrap = $("coreWrap");
-const stateLabel = $("stateLabel");
-const voiceHint = $("voiceHint");
-const settingsDialog = $("settingsDialog");
-
-let history = [];
-let recorder = null;
-let chunks = [];
-let recording = false;
-let currentAudio = null;
-let currentAudioUrl = null;
-let speakEnabled = true;
-let autoSpeak = true;
-let lastUserLanguage = "az";
-
-function setState(state, label) {
-  coreWrap.dataset.state = state;
-  stateLabel.textContent = label;
-}
-
-function addMessage(role, text) {
-  const row = document.createElement("div");
-  row.className = `message ${role}`;
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  if (role === "assistant") {
-    const title = document.createElement("b");
-    title.textContent = "F2 JARVIS";
-    const body = document.createElement("p");
-    body.textContent = text;
-    bubble.append(title, body);
-    const avatar = document.createElement("div");
-    avatar.className = "bot-avatar";
-    avatar.textContent = "F2";
-    row.append(avatar, bubble);
-  } else {
-    bubble.textContent = text;
-    row.append(bubble);
-  }
-  messagesEl.append(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return row;
-}
-
-function detectLanguage(text) {
-  const t = text.toLowerCase();
-  if (/[а-яё]/i.test(text)) return "ru";
-  if (/[əğıöüşç]/i.test(t) || /\b(salam|mən|sən|üçün|necə|bəli|xeyr|çox)\b/.test(t)) return "az";
-  if (/[ğİı]/.test(text) || /\b(merhaba|nasılsın|teşekkür|lütfen|için|değil)\b/.test(t)) return "tr";
-  if (/\b(hello|the|what|how|please|thanks|good)\b/.test(t)) return "en";
-  return lastUserLanguage || "az";
-}
-
-async function speak(text) {
-  if (!speakEnabled || !text) return;
-  stopAudio();
-  setState("speaking", "JARVIS DANIŞIR");
-  try {
-    const response = await fetch("/api/speak", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, languageCode: lastUserLanguage })
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || "ElevenLabs səs xətası.");
-    }
-    const blob = await response.blob();
-    currentAudioUrl = URL.createObjectURL(blob);
-    currentAudio = new Audio(currentAudioUrl);
-    currentAudio.onended = () => {
-      stopAudio();
-      setState("idle", "SİSTEM HAZIRDIR");
-    };
-    currentAudio.onerror = () => {
-      stopAudio();
-      setState("idle", "SİSTEM HAZIRDIR");
-      voiceHint.textContent = "Səs oxudulmadı. Mesaj ekranda qalır.";
-    };
-    await currentAudio.play();
-  } catch (error) {
-    console.error(error);
-    setState("idle", "SİSTEM HAZIRDIR");
-    voiceHint.textContent = `${error.message} Mətn cavabı söhbətdə qalır.`;
-  }
-}
-
-function stopAudio() {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.src = "";
-    currentAudio = null;
-  }
-  if (currentAudioUrl) {
-    URL.revokeObjectURL(currentAudioUrl);
-    currentAudioUrl = null;
-  }
-}
-
-async function askJarvis(text, shouldSpeak = false) {
-  const clean = text.trim();
-  if (!clean) return;
-  lastUserLanguage = detectLanguage(clean);
-  history.push({ role: "user", content: clean });
-  addMessage("user", clean);
-  input.value = "";
-  sendBtn.disabled = true;
-  setState("thinking", "JARVIS DÜŞÜNÜR");
-  const typing = document.createElement("div");
-  typing.className = "typing";
-  typing.textContent = "F2 JARVIS cavab hazırlayır...";
-  messagesEl.append(typing);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "AI cavabı alınmadı.");
-    const answer = data.answer || "Cavab alınmadı.";
-    history.push({ role: "assistant", content: answer });
-    typing.remove();
-    addMessage("assistant", answer);
-    setState("idle", "SİSTEM HAZIRDIR");
-    if (speakEnabled && (shouldSpeak || autoSpeak)) await speak(answer);
-  } catch (error) {
-    typing.remove();
-    addMessage("assistant", `Xəta: ${error.message}`);
-    setState("idle", "SİSTEM HAZIRDIR");
-  } finally {
-    sendBtn.disabled = false;
-    input.focus();
-  }
-}
-
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  askJarvis(input.value, false);
-});
-
-async function startRecording() {
-  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    voiceHint.textContent = "Bu brauzer səs yazısını dəstəkləmir. Chrome ilə yoxla.";
-    return;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    chunks = [];
-    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
-    recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-    recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
-    recorder.onstop = async () => {
-      stream.getTracks().forEach(track => track.stop());
-      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-      if (!blob.size) {
-        setState("idle", "SİSTEM HAZIRDIR");
-        voiceHint.textContent = "Səs yazısı boşdur. Yenidən cəhd et.";
-        return;
-      }
-      await transcribe(blob);
-    };
-    recorder.start();
-    recording = true;
-    voiceBtn.classList.add("recording");
-    voiceLabel.textContent = "Bitirmək üçün yenidən bas";
-    stopBtn.disabled = false;
-    setState("listening", "SƏNİ DİNLƏYİRƏM");
-    voiceHint.textContent = "Danışığını bitirəndə düyməyə yenidən bas.";
-  } catch (error) {
-    voiceHint.textContent = "Mikrofona icazə verilmədi. Brauzer icazələrini yoxla.";
-    console.error(error);
-  }
-}
-
-function stopRecording() {
-  if (recorder && recording) {
-    recording = false;
-    recorder.stop();
-    voiceBtn.classList.remove("recording");
-    voiceLabel.textContent = "Danışmaq üçün bas";
-    stopBtn.disabled = true;
-    setState("thinking", "SƏS EMAL OLUNUR");
-  }
-}
-
-async function transcribe(blob) {
-  try {
-    const formData = new FormData();
-    formData.append("audio", blob, "f2-jarvis-recording.webm");
-    const response = await fetch("/api/transcribe", { method: "POST", body: formData });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Səs tanınmadı.");
-    const text = (data.text || "").trim();
-    if (!text) throw new Error("Danışıq başa düşülmədi. Bir daha danış.");
-    lastUserLanguage = detectLanguage(text);
-    voiceHint.textContent = `Eşidildi: “${text}”`;
-    await askJarvis(text, true);
-  } catch (error) {
-    setState("idle", "SİSTEM HAZIRDIR");
-    voiceHint.textContent = error.message;
-  }
-}
-
-voiceBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
-stopBtn.addEventListener("click", () => {
-  if (recording) stopRecording();
-  stopAudio();
-  setState("idle", "SİSTEM HAZIRDIR");
-});
-
-$("clearBtn").addEventListener("click", () => {
-  history = [];
-  stopAudio();
-  messagesEl.innerHTML = "";
-  addMessage("assistant", "Söhbət təmizləndi. Yeni sualını verə bilərsən.");
-});
-$("settingsBtn").addEventListener("click", () => settingsDialog.showModal());
-$("speakToggle").addEventListener("change", e => { speakEnabled = e.target.checked; if (!speakEnabled) stopAudio(); });
-$("autoSpeakToggle").addEventListener("change", e => { autoSpeak = e.target.checked; });
-
-async function checkHealth() {
-  try {
-    const response = await fetch("/api/health");
-    const data = await response.json();
-    $("connection").textContent = data.aiConfigured ? (data.voiceConfigured ? "AI + SƏS AKTİVDİR" : "AI AKTİVDİR · SƏS AÇARI LAZIMDIR") : "API AÇARI LAZIMDIR";
-  } catch {
-    $("connection").textContent = "SERVERƏ BAĞLANTI YOXDUR";
-  }
-}
-checkHealth();
+const $ = id => document.getElementById(id);
+const messagesEl=$('messages'),form=$('chatForm'),input=$('messageInput'),sendBtn=$('sendBtn');
+const voiceBtn=$('voiceBtn'),voiceLabel=$('voiceLabel'),stopBtn=$('stopBtn'),coreWrap=$('coreWrap'),stateLabel=$('stateLabel'),voiceHint=$('voiceHint'),settingsDialog=$('settingsDialog');
+let history=[],currentAudio=null,currentAudioUrl=null,speakEnabled=true,autoSpeak=true,lastUserLanguage='az';
+let recognition=null,wakeEnabled=false,conversationActive=false,recognitionRunning=false,busy=false,speaking=false,finalBuffer='',turnTimer=null,restartTimer=null,firstGreeting=true,audioContext=null;
+window.J=window.J||{state:'idle',lvl:0};
+function setState(state,label){coreWrap.dataset.state=state;stateLabel.textContent=label;window.J.state=state;}
+function addMessage(role,text){const row=document.createElement('div');row.className=`message ${role}`;const bubble=document.createElement('div');bubble.className='bubble';if(role==='assistant'){const title=document.createElement('b');title.textContent='F2 JARVIS';const body=document.createElement('p');body.textContent=text;bubble.append(title,body);const avatar=document.createElement('div');avatar.className='bot-avatar';avatar.textContent='F2';row.append(avatar,bubble);}else{bubble.textContent=text;row.append(bubble);}messagesEl.append(row);messagesEl.scrollTop=messagesEl.scrollHeight;return row;}
+function detectLanguage(text){const t=text.toLowerCase();if(/[а-яё]/i.test(text))return'ru';if(/[əğıöüşç]/i.test(t)||/\b(salam|mən|sən|üçün|necə|bəli|xeyr|çox)\b/.test(t))return'az';if(/[ğİı]/.test(text)||/\b(merhaba|nasılsın|teşekkür|lütfen|için|değil)\b/.test(t))return'tr';if(/\b(hello|the|what|how|please|thanks|good)\b/.test(t))return'en';return lastUserLanguage||'az';}
+function recognitionLanguage(){return ({az:'az-AZ',tr:'tr-TR',en:'en-US',ru:'ru-RU'})[lastUserLanguage]||'az-AZ';}
+function stopRecognition(){if(!recognition)return;try{recognition.stop();}catch{}recognitionRunning=false;}
+function startRecognition(){if(!wakeEnabled||busy||speaking||!recognition||recognitionRunning)return;try{recognition.lang=recognitionLanguage();recognition.start();recognitionRunning=true;}catch(e){if(e.name!=='InvalidStateError')console.warn('Recognition start:',e);}}
+function scheduleRecognition(ms=500){clearTimeout(restartTimer);restartTimer=setTimeout(()=>{if(wakeEnabled&&!busy&&!speaking)startRecognition();},ms);}
+function normalizeWake(text){return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ə/g,'e').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
+function extractWakeCommand(text){const match=text.match(/\b(?:hey\s*)?(?:jarvis|jervis|jerviz|jərvis)\b/i);if(!match)return null;return text.slice(match.index+match[0].length).trim().replace(/^[,.:;!?-]+\s*/,'');}
+function playStartupTone(){try{audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();audioContext.resume();const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(660,audioContext.currentTime);osc.frequency.exponentialRampToValueAtTime(990,audioContext.currentTime+.18);gain.gain.setValueAtTime(.0001,audioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.12,audioContext.currentTime+.025);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+.38);osc.connect(gain);gain.connect(audioContext.destination);osc.start();osc.stop(audioContext.currentTime+.4);}catch{}}
+async function speak(text){if(!speakEnabled||!text)return;stopRecognition();stopAudio();speaking=true;setState('speaking','JARVIS DANIŞIR');try{const response=await fetch('/api/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,languageCode:lastUserLanguage})});if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.error||'Səs xidməti cavab vermədi.');}const blob=await response.blob();currentAudioUrl=URL.createObjectURL(blob);currentAudio=new Audio(currentAudioUrl);currentAudio.preload='auto';let analyser=null,source=null,raf=0;if(audioContext){try{analyser=audioContext.createAnalyser();analyser.fftSize=256;source=audioContext.createMediaElementSource(currentAudio);source.connect(analyser);analyser.connect(audioContext.destination);const data=new Uint8Array(analyser.fftSize);const meter=()=>{if(!currentAudio||currentAudio.paused)return;analyser.getByteTimeDomainData(data);let sum=0;for(const v of data){const n=(v-128)/128;sum+=n*n;}window.J.lvl=Math.min(.5,Math.sqrt(sum/data.length)*1.8);raf=requestAnimationFrame(meter);};}catch{analyser=null;}}
+currentAudio.onended=()=>{cancelAnimationFrame(raf);window.J.lvl=0;stopAudio();speaking=false;setState('idle',wakeEnabled?'HEY JARVIS DEYƏ BİLƏRSƏN':'SİSTEM HAZIRDIR');if(wakeEnabled){voiceHint.textContent='Dinləyirəm. Növbəti sualını verə bilərsən.';scheduleRecognition(450);}};
+currentAudio.onerror=()=>{cancelAnimationFrame(raf);window.J.lvl=0;stopAudio();speaking=false;setState('idle','SİSTEM HAZIRDIR');voiceHint.textContent='Səs oxudulmadı. Mətn cavabı söhbətdə qalır.';if(wakeEnabled)scheduleRecognition(700);};
+await currentAudio.play();if(analyser)raf=requestAnimationFrame(meter);
+}catch(error){console.error(error);speaking=false;window.J.lvl=0;setState('idle','SİSTEM HAZIRDIR');voiceHint.textContent=`${error.message} Mətn cavabı söhbətdə qalır.`;if(wakeEnabled)scheduleRecognition(800);}}
+function stopAudio(){if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}if(currentAudioUrl){URL.revokeObjectURL(currentAudioUrl);currentAudioUrl=null;}window.J.lvl=0;}
+async function askJarvis(text,shouldSpeak=true){const clean=text.trim();if(!clean||busy)return;busy=true;clearTimeout(turnTimer);finalBuffer='';lastUserLanguage=detectLanguage(clean);history.push({role:'user',content:clean});addMessage('user',clean);input.value='';sendBtn.disabled=true;stopRecognition();setState('thinking','JARVIS DÜŞÜNÜR');const typing=document.createElement('div');typing.className='typing';typing.textContent='F2 JARVIS cavab hazırlayır...';messagesEl.append(typing);messagesEl.scrollTop=messagesEl.scrollHeight;
+try{const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'AI cavabı alınmadı.');const answer=data.answer||'Cavab alınmadı.';history.push({role:'assistant',content:answer});typing.remove();addMessage('assistant',answer);busy=false;if(speakEnabled&&(shouldSpeak||autoSpeak)){await speak(answer);}else{setState('idle',wakeEnabled?'HEY JARVIS DEYƏ BİLƏRSƏN':'SİSTEM HAZIRDIR');if(wakeEnabled)scheduleRecognition(400);}}
+catch(error){typing.remove();addMessage('assistant',`Xəta: ${error.message}`);busy=false;setState('idle','SİSTEM HAZIRDIR');if(wakeEnabled)scheduleRecognition(900);}finally{sendBtn.disabled=false;}}
+function handleRecognized(text){const phrase=text.trim();if(!phrase)return;if(!conversationActive){const command=extractWakeCommand(phrase);if(command===null)return;conversationActive=true;voiceHint.textContent='Buyur, səni dinləyirəm...';if(command.length>1){askJarvis(command,true);}else{speak('Buyur, səni dinləyirəm.');}return;}finalBuffer+=(finalBuffer?' ':'')+phrase;clearTimeout(turnTimer);turnTimer=setTimeout(()=>{const complete=finalBuffer.trim();finalBuffer='';if(complete)askJarvis(complete,true);},950);}
+function initVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){voiceHint.textContent='Bu brauzerdə canlı nitq tanıma yoxdur. Android Chrome ilə aç və yenidən yoxla.';return false;}recognition=new SR();recognition.continuous=true;recognition.interimResults=true;recognition.maxAlternatives=1;recognition.lang='az-AZ';recognition.onstart=()=>{recognitionRunning=true;setState('listening',conversationActive?'SƏNİ DİNLƏYİRƏM':'HEY JARVIS GÖZLƏNİLİR');};recognition.onresult=e=>{let finalText='';for(let i=e.resultIndex;i<e.results.length;i++){const result=e.results[i];if(result.isFinal)finalText+=result[0].transcript+' ';}if(finalText.trim())handleRecognized(finalText);};recognition.onerror=e=>{recognitionRunning=false;if(e.error==='not-allowed'||e.error==='service-not-allowed'){wakeEnabled=false;voiceBtn.classList.remove('active');voiceLabel.textContent='Daimi dinləməni başlat';stopBtn.disabled=true;voiceHint.textContent='Mikrofon icazəsi verilməyib. Chrome sayt icazələrindən mikrofonu aktiv et.';setState('idle','MİKROFON İCAZƏSİ LAZIMDIR');}else if(e.error==='language-not-supported'&&recognition.lang==='az-AZ'){lastUserLanguage='tr';voiceHint.textContent='Azərbaycan nitq paketi tapılmadı; Türk dili tanıma rejimi yoxlanılır.';}else if(e.error!=='no-speech'&&e.error!=='aborted'){voiceHint.textContent=`Nitq tanıma: ${e.error}. Yenidən qoşuluram...`;}};recognition.onend=()=>{recognitionRunning=false;if(wakeEnabled&&!busy&&!speaking)scheduleRecognition(650);};return true;}
+async function startWakeListening(){if(!recognition&&!initVoice())return;try{audioContext=audioContext||new(window.AudioContext||window.webkitAudioContext)();await audioContext.resume();}catch{}playStartupTone();wakeEnabled=true;conversationActive=false;finalBuffer='';voiceBtn.classList.add('active');voiceLabel.textContent='Dinləmə aktivdir';stopBtn.disabled=false;voiceHint.textContent='İndi “Hey Jarvis” de. Sualını bitirəndə avtomatik cavab verəcəyəm.';setState('listening','HEY JARVIS GÖZLƏNİLİR');startRecognition();if(firstGreeting){firstGreeting=false;setTimeout(()=>{if(wakeEnabled&&!busy&&!speaking)speak('Sistem işə düşdü. Salam, mən F2 JARVIS. Səni dinləməyə hazıram.');},350);}}
+function stopWakeListening(){wakeEnabled=false;conversationActive=false;busy=false;clearTimeout(turnTimer);clearTimeout(restartTimer);finalBuffer='';stopRecognition();stopAudio();voiceBtn.classList.remove('active');voiceLabel.textContent='Daimi dinləməni başlat';stopBtn.disabled=true;setState('idle','SİSTEM DAYANDIRILDI');voiceHint.textContent='Dinləmə dayandırıldı. Yenidən başlatmaq üçün düyməyə bas.';}
+form.addEventListener('submit',e=>{e.preventDefault();askJarvis(input.value,false);});
+voiceBtn.addEventListener('click',()=>wakeEnabled?stopWakeListening():startWakeListening());stopBtn.addEventListener('click',stopWakeListening);
+$('clearBtn').addEventListener('click',()=>{history=[];stopAudio();messagesEl.innerHTML='';addMessage('assistant','Söhbət təmizləndi. Yeni sualını verə bilərsən.');});
+$('settingsBtn').addEventListener('click',()=>settingsDialog.showModal());$('speakToggle').addEventListener('change',e=>{speakEnabled=e.target.checked;if(!speakEnabled)stopAudio();});$('autoSpeakToggle').addEventListener('change',e=>{autoSpeak=e.target.checked;});
+async function checkHealth(){try{const response=await fetch('/api/health');const data=await response.json();$('connection').textContent=data.aiConfigured?(data.voiceConfigured?'AI + NEURAL SƏS AKTİVDİR':'AI AKTİVDİR · SƏS YOXDUR'):'GROQ API AÇARI LAZIMDIR';}catch{$('connection').textContent='SERVERƏ BAĞLANTI YOXDUR';}}checkHealth();

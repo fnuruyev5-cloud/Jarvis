@@ -1,6 +1,6 @@
 # F2 JARVIS — Free Neural TTS
 
-Bu versiyada ElevenLabs çıxarılıb. Səs üçün Microsoft Edge-in onlayn neural TTS xidmətinə qoşulan açıq mənbəli Node paketi istifadə olunur. Bu üsul ElevenLabs API açarı və ödəniş tələb etmir. Xidmət internet bağlantısından və Microsoft-un endpointinin işlək qalmasından asılıdır; limitsiz və rəsmi SLA zəmanətli API kimi qəbul edilməməlidir.
+Bu versiyada ElevenLabs çıxarılıb. AI cavabları Groq, səs çıxışı isə Microsoft Edge-in onlayn neural TTS xidmətinə qoşulan açıq mənbəli Node paketi ilə işləyir. Bu üsul ElevenLabs API açarı tələb etmir. Xidmət internet bağlantısından və Microsoft endpointinin işlək qalmasından asılıdır; rəsmi, limitsiz API zəmanəti yoxdur.
 
 ## Daxil edilən kişi səsləri
 - Azərbaycan: `az-AZ-BabekNeural`
@@ -16,6 +16,7 @@ ZIP-i aç və aşağıdakı faylları GitHub `Jarvis` reposunun `main` branch-in
 - `index.html`
 - `style.css`
 - `app.js`
+- `face.js` (hologram üz animasiyası)
 - `server.js`
 - `package.json`
 - `.env.example`
@@ -38,10 +39,14 @@ Sonra Manual Deploy → Deploy latest commit.
 ## Yoxlama
 `https://jarvis-5okr.onrender.com/api/health` aç. Burada `voiceConfigured: true` və `voiceProvider: "Microsoft Edge Neural TTS"` görünməlidir.
 
-## Vacib qeydlər
-- Səsli sual vermə push-to-talk rejimindədir: mikrofon düyməsinə bas, danış, bitirəndə yenidən bas.
-- Bu, tam duplex canlı danışıq deyil.
+## Yeni səsli rejim
+- Mikrofon düyməsinə bir dəfə basaraq dinləməni aktiv et.
+- “Hey Jarvis” (və ya “Jarvis”) de. Sonra sualını adi danışıqla ver.
+- JARVIS danışığını bitirdikdən sonra sükut fasiləsini avtomatik aşkarlayıb cavab verir və növbəti sualı dinləyir.
+- Söhbəti “Dayandır” düyməsi ilə bağla. İlk aktivləşdirmədə qısa açılış səsi və salamlaması səslənir.
+- Nitq tanıma brauzerin Web Speech API imkanından istifadə edir. Android Chrome-da sayt açıq və ön planda qalmalıdır; ekran sönəndə və ya başqa tətbiqə keçəndə brauzer mikrofonu dayandıra bilər. Bəzi cihazlarda Azərbaycan dili nitq tanıma dəstəyi zəifdirsə, Türk dili rejimi ehtiyat variant kimi yoxlanır.
+- Cavab səsi əvvəlkindən bir qədər sürətli və daha dərin tonda qurulub. Bu, ayrıca aktyor səsinin klonu deyil.
 - Microsoft Edge TTS kitabxanası Microsoft Edge-in onlayn danışıq xidmətinə API açarı olmadan qoşulur. Üçüncü tərəf paketidir, rəsmi Azure Speech SDK deyil; Microsoft xidməti dəyişərsə işləməyə bilər.
-- Səs 3-cü ElevenLabs nümunəsinin eynisi deyil. Azərbaycan dilində Babək kişi neural səsidir.
+- Azərbaycan dili üçün Babək kişi neural səsi seçilib; bu, ayrıca aktyor səsinin klonu deyil.
 - Digər dillər üçün uyğun kişi səsləri seçilir; hər dildə eyni səs kimliyi saxlanmaya bilər.
 - Supabase bu paketə qoşulmayıb.
