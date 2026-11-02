@@ -1,9 +1,9 @@
 {
-  "name": "f2-jarvis",
-  "version": "2.0.0",
+  "name": "f2-jarvis-free-tts",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
-  "description": "F2 JARVIS AI assistant with animated cybernetic face, Groq chat and speech transcription",
+  "description": "F2 JARVIS with Groq AI and free Microsoft Edge neural TTS",
   "scripts": {
     "start": "node server.js"
   },
@@ -13,6 +13,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "@andresaya/edge-tts": "^1.9.1"
   }
 }

@@ -1,166 +1,189 @@
-import "dotenv/config";
 import express from "express";
+import dotenv from "dotenv";
+import multer from "multer";
+import { EdgeTTS } from "@andresaya/edge-tts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import multer from "multer";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const GROQ_STT_MODEL = process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
+const FREE_TTS_PROVIDER = "Microsoft Edge Neural TTS";
+const EDGE_VOICES = {
+  az: "az-AZ-BabekNeural",
+  tr: "tr-TR-AhmetNeural",
+  en: "en-US-GuyNeural",
+  ru: "ru-RU-DmitryNeural",
+  de: "de-DE-ConradNeural",
+  fr: "fr-FR-HenriNeural",
+  es: "es-ES-AlvaroNeural",
+  it: "it-IT-DiegoNeural",
+  pt: "pt-BR-AntonioNeural",
+  ar: "ar-SA-HamedNeural"
+};
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
-
-const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
-const GROQ_STT_MODEL = process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
+app.use(express.static(__dirname, { extensions: ["html"] }));
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }
 });
 
-app.use((req, res, next) => {
-  if (req.path === "/" || req.path.endsWith(".js") || req.path.endsWith(".css")) {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-  }
-  next();
-});
-
-app.use(express.static(__dirname, {
-  index: "index.html",
-  dotfiles: "ignore",
-  setHeaders(res, filePath) {
-    if (filePath.endsWith(".js") || filePath.endsWith(".css") || filePath.endsWith(".html")) {
-      res.setHeader("Cache-Control", "no-store");
-    }
-  }
-}));
+const SYSTEM_PROMPT = `Sən F2 JARVIS adlı ağıllı, faydalı və nəzakətli AI köməkçisisən.
+İstifadəçinin yazdığı və ya danışdığı dildə cavab ver. Azərbaycan dilində aydın, təbii və düzgün yaz.
+Cavabları konkret və faydalı et. İstifadəçi başqa dilə keçərsə, həmin dilə uyğunlaş.
+Əgər "Səni kim yaradıb?" deyə soruşsalar, dəqiq belə cavab ver: "Məni F2 Fərid yaradıb."
+Özünü ChatGPT və ya başqa məhsul kimi təqdim etmə; adın F2 JARVIS-dir.
+Bilmədiyin faktı uydurma.`;
 
 app.get("/api/health", (_req, res) => {
-  res.set("Cache-Control", "no-store");
   res.json({
     ok: true,
     name: "F2 JARVIS",
     aiConfigured: Boolean(GROQ_API_KEY),
     aiProvider: "Groq",
     model: GROQ_MODEL,
-    speechRecognition: Boolean(GROQ_API_KEY)
+    transcriptionConfigured: Boolean(GROQ_API_KEY),
+    voiceConfigured: true,
+    voiceProvider: FREE_TTS_PROVIDER,
+    voiceModel: "Neural voices (no API key)"
   });
 });
-
-const SYSTEM_PROMPT = `
-Sən F2 JARVIS adlı şəxsi süni intellekt köməkçisisən.
-İstifadəçinin yazdığı və ya danışdığı dildə cavab ver.
-Azərbaycan dilində səlis, aydın, təbii və düzgün yaz.
-Türk, ingilis, rus və digər dillərdə də həmin dildə cavab ver.
-Sakit, ağıllı, nəzakətli, peşəkar və köməksevər ol. Lazımsız uzatma.
-İstifadəçi "Səni kim yaradıb?" deyərsə, dəqiq belə cavab ver:
-"Məni F2 Fərid yaradıb."
-Özünü insan və ya canlı varlıq kimi təqdim etmə. Bilmədiyin məlumatı uydurma.
-`;
 
 app.post("/api/chat", async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
-      return res.status(503).json({ error: "GROQ_API_KEY Render Environment-də qurulmayıb." });
+      return res.status(503).json({ error: "Groq API açarı Render Environment-də əlavə edilməyib." });
     }
 
-    const message = String(req.body?.message || "").trim();
-    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-12) : [];
-    if (!message) return res.status(400).json({ error: "Mesaj boş ola bilməz." });
+    const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const safeMessages = messages
+      .filter(m => m && ["user", "assistant"].includes(m.role) && typeof m.content === "string")
+      .slice(-12)
+      .map(m => ({ role: m.role, content: m.content.slice(0, 6000) }));
 
-    const safeHistory = history
-      .filter(item => item && ["user", "assistant"].includes(item.role) && typeof item.content === "string")
-      .map(item => ({ role: item.role, content: item.content.slice(0, 4000) }));
+    if (!safeMessages.length || safeMessages.at(-1).role !== "user") {
+      return res.status(400).json({ error: "Mesaj tapılmadı." });
+    }
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...safeHistory,
-          { role: "user", content: message }
-        ],
-        temperature: 0.65,
-        max_completion_tokens: 1200
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
+        temperature: 0.7,
+        max_tokens: 1200
       }),
       signal: AbortSignal.timeout(60000)
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("Groq chat error:", response.status, data?.error?.message || data);
-      const detail = data?.error?.message || "Groq sorğusu uğursuz oldu.";
-      return res.status(response.status === 401 ? 502 : response.status).json({
-        error: response.status === 401
-          ? "Groq API açarı etibarsızdır. Render Environment-də GROQ_API_KEY dəyərini yoxla."
-          : response.status === 429
-            ? "Groq limitinə çatıldı. Bir az sonra yenidən yoxla."
-            : detail
+      console.error("Groq error:", data);
+      return res.status(response.status).json({
+        error: data?.error?.message || "AI cavabı alınmadı."
       });
     }
 
-    const reply = data?.choices?.[0]?.message?.content?.trim();
-    if (!reply) return res.status(502).json({ error: "AI boş cavab qaytardı." });
-    res.json({ ok: true, reply });
+    const answer = data?.choices?.[0]?.message?.content?.trim();
+    if (!answer) return res.status(502).json({ error: "AI boş cavab qaytardı." });
+    res.json({ answer });
   } catch (error) {
-    console.error("Chat endpoint error:", error);
-    res.status(500).json({ error: "AI sorğusu zamanı xəta baş verdi. Render loglarını yoxlamaq lazımdır." });
+    console.error("Chat error:", error);
+    res.status(500).json({ error: "AI sorğusu zamanı xəta baş verdi." });
   }
 });
 
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
-      return res.status(503).json({ error: "Səs tanıma üçün GROQ_API_KEY qurulmayıb." });
+      return res.status(503).json({ error: "Səsin mətnə çevrilməsi üçün Groq API açarı lazımdır." });
     }
-    if (!req.file) return res.status(400).json({ error: "Audio faylı göndərilməyib." });
+    if (!req.file) return res.status(400).json({ error: "Səs faylı göndərilməyib." });
 
     const form = new FormData();
     const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "audio/webm" });
-    form.append("file", blob, req.file.originalname || "f2-voice.webm");
+    form.append("file", blob, req.file.originalname || "recording.webm");
     form.append("model", GROQ_STT_MODEL);
     form.append("response_format", "json");
-    form.append("temperature", "0");
 
     const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` },
       body: form,
       signal: AbortSignal.timeout(90000)
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error("Groq transcription error:", response.status, data?.error?.message || data);
-      return res.status(response.status).json({
-        error: data?.error?.message || "Groq nitq tanıma xidməti cavab vermədi."
-      });
+      console.error("Groq transcription error:", data);
+      return res.status(response.status).json({ error: data?.error?.message || "Səs tanınmadı." });
     }
-
-    const text = String(data?.text || "").trim();
-    if (!text) return res.status(422).json({ error: "Danışıq aydın eşidilmədi. Bir daha danış." });
-    res.json({ ok: true, text, language: data?.language || null });
+    res.json({ text: data.text || "" });
   } catch (error) {
-    console.error("Transcription endpoint error:", error);
-    res.status(500).json({ error: "Səs faylı emal edilərkən xəta baş verdi." });
+    console.error("Transcription error:", error);
+    res.status(500).json({ error: "Səs emalı zamanı xəta baş verdi." });
   }
 });
 
-app.use("/api", (_req, res) => res.status(404).json({ error: "API ünvanı tapılmadı." }));
+app.post("/api/speak", async (req, res) => {
+  try {
+    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+    const languageCode = typeof req.body?.languageCode === "string" ? req.body.languageCode.toLowerCase() : "az";
+    if (!text) return res.status(400).json({ error: "Danışdırılacaq mətn boşdur." });
+    if (text.length > 4500) return res.status(400).json({ error: "Mətn çox uzundur. 4500 simvoldan qısa göndərin." });
 
-app.use((error, _req, res, _next) => {
-  console.error("Express error:", error);
-  if (error?.code === "LIMIT_FILE_SIZE") {
-    return res.status(413).json({ error: "Səs faylı 20 MB limitini keçir." });
+    const lang = languageCode.split("-")[0].split("_")[0];
+    const voice = EDGE_VOICES[lang] || EDGE_VOICES.az;
+    const tts = new EdgeTTS();
+    const audioResult = await tts.generate(text, voice, {
+      pitch: -8,
+      rate: "-5%",
+      volume: "90%",
+      outputFormat: "audio-24khz-96kbitrate-mono-mp3",
+      timeout: 45000
+    });
+
+    if (!audioResult?.audio?.length) {
+      return res.status(502).json({ error: "Pulsuz səs xidməti audio qaytarmadı. Bir az sonra yenidən yoxla." });
+    }
+
+    const audio = Buffer.from(audioResult.audio);
+    res.set({
+      "Content-Type": "audio/mpeg",
+      "Content-Length": String(audio.length),
+      "Cache-Control": "no-store"
+    });
+    res.send(audio);
+  } catch (error) {
+    console.error("Free TTS error:", error);
+    res.status(502).json({
+      error: "Pulsuz səs xidməti hazırda cavab vermir. Mətn cavabı söhbətdə qalır."
+    });
   }
-  res.status(500).json({ error: "Server xətası baş verdi." });
+});
+
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api/")) return res.status(404).json({ error: "API route tapılmadı." });
+  res.sendFile(path.join(__dirname, "index.html"), err => err && next(err));
+});
+
+app.use((err, _req, res, _next) => {
+  console.error("Server error:", err);
+  res.status(err.status || 500).json({ error: err.message || "Server xətası." });
 });
 
 app.listen(PORT, () => console.log(`F2 JARVIS server listening on ${PORT}`));
