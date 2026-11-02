@@ -93,6 +93,6 @@ app.post('/api/history', async (req,res) => {
   }
 });
 
-app.get('/{*splat}', (req, res) => {.sendFile(path.join(__dirname,'public','index.html')));
+app.get('/{*splat}', (req, res) => {sendFile(path.join(__dirname,'public','index.html')));
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => console.log(`F2 JARVIS server listening on ${port}`));
