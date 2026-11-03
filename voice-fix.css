@@ -1,0 +1,61 @@
+/* F2 JARVIS voice-fix: microphone button is beside the message/send controls. */
+.composer {
+  gap: 8px;
+  padding: 6px 7px;
+}
+.composer .voice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  border: 1px solid rgba(0,229,255,.75);
+  border-radius: 8px 3px;
+  color: #00131b;
+  background: linear-gradient(145deg,#00e5ff,#0a84ff);
+  box-shadow: 0 0 12px rgba(0,229,255,.28);
+  font: 700 20px/1 Arial,sans-serif;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, background .15s;
+}
+.composer .voice-button.active {
+  color: #fff;
+  border-color: #ff6262;
+  background: linear-gradient(145deg,#ff3b3b,#b80e35);
+  box-shadow: 0 0 0 5px rgba(255,59,59,.12),0 0 20px rgba(255,59,59,.55);
+  animation: f2-mic-pulse 1.5s ease-in-out infinite;
+}
+.composer .voice-button:focus-visible,
+.composer button:focus-visible {
+  outline: 2px solid #00e5ff;
+  outline-offset: 3px;
+}
+.voice-hint {
+  min-height: 22px;
+  padding: 0 16px 8px;
+  color: #80a9bb;
+  font: 11px/1.45 "Share Tech Mono",monospace;
+  overflow-wrap: anywhere;
+}
+@keyframes f2-mic-pulse {
+  50% { box-shadow: 0 0 0 9px rgba(255,59,59,0),0 0 24px rgba(255,59,59,.35); }
+}
+@media(max-width:480px) {
+  .composer { gap: 6px; margin-inline: 9px; }
+  .composer .voice-button,
+  .composer button[type="submit"] {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    flex-basis: 44px;
+  }
+  .voice-hint { padding-inline: 12px; font-size: 10px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .composer .voice-button.active { animation: none; }
+}
