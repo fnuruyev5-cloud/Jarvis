@@ -1,0 +1,11 @@
+create extension if not exists pgcrypto;
+create table if not exists public.jarvis_conversations(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,title text not null default 'Yeni söhbət',created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create table if not exists public.jarvis_messages(id uuid primary key default gen_random_uuid(),conversation_id uuid not null references public.jarvis_conversations(id) on delete cascade,user_id uuid not null references auth.users(id) on delete cascade,role text not null check(role in('user','assistant')),content text not null,created_at timestamptz not null default now());
+create table if not exists public.jarvis_notes(id uuid primary key default gen_random_uuid(),user_id uuid not null references auth.users(id) on delete cascade,content text not null,created_at timestamptz not null default now());
+create table if not exists public.jarvis_preferences(user_id uuid primary key references auth.users(id) on delete cascade,language text not null default 'az',theme text not null default 'holographic-blue',updated_at timestamptz not null default now());
+alter table public.jarvis_conversations enable row level security;alter table public.jarvis_messages enable row level security;alter table public.jarvis_notes enable row level security;alter table public.jarvis_preferences enable row level security;
+create policy "user owns conversations" on public.jarvis_conversations for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+create policy "user owns messages" on public.jarvis_messages for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+create policy "user owns notes" on public.jarvis_notes for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+create policy "user owns preferences" on public.jarvis_preferences for all using(auth.uid()=user_id) with check(auth.uid()=user_id);
+create index if not exists jarvis_messages_by_conversation on public.jarvis_messages(conversation_id,created_at);

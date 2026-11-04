@@ -1,0 +1,43 @@
+F2 JARVIS — ULTIMATE ADD-ON
+
+Bu paket köhnə layihəni əvəz etmir. Əvvəl GitHub repo-nun backup ZIP faylını saxla.
+
+1) Bu ZIP-dəki jarvis-ultimate-addon.js, jarvis-ultimate-addon.css, jarvis-sw.js və manifest.webmanifest fayllarını index.html/server.js ilə eyni public kök qovluğa əlavə et.
+
+2) index.html <head> hissəsinə əlavə et:
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/jarvis-ultimate-addon.css">
+
+</body>-dən əvvəl əlavə et:
+<script src="/jarvis-ultimate-addon.js" defer></script>
+Mövcud app.js və face.js skriptlərini SİLMƏ.
+
+3) Şəkil AI analizi:
+server-vision-route.js faylının içindəki route-u server.js-ə express.json middleware-dən SONRA və catch-all route-dan ƏVVƏL əlavə et. JSON body limit 12mb olmalıdır (mövcud middleware ayarını yoxla).
+Render Environment:
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+Mövcud GROQ_API_KEY server secret olaraq qalsın. Model hesabında aktiv deyilsə, Groq Console-da vision dəstəkləyən model seç. Kod server.js-də GROQ_API_KEY və ya process.env.GROQ_API_KEY dəyişəninin mövcudluğunu fərz edir.
+
+4) OCR:
+Addon skriptindən əvvəl index.html-ə əlavə et:
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+OCR ilk istifadədə internet tələb edir. QR üçün brauzer BarcodeDetector API dəstəkləməlidir.
+
+5) Supabase:
+supabase-schema.sql faylını Supabase SQL Editor-də icra et. Bu, cədvəllər və RLS yaradır; özü-özlüyündə login ekranı və bulud sinxronizasiyası yaratmır. Service role key-i frontend-ə qoyma.
+
+6) GitHub-a commit et, Render deploy tamamlandıqdan sonra saytı yenilə.
+
+DAXİL OLANLAR:
+- Command Center, vaxt/onlayn statusu, dəstəklənərsə batareya
+- Kamera preview, ön/arxa kamera, foto çəkmə və yükləmə
+- Groq Vision route nümunəsi
+- OCR/QR dəstək nöqtələri, TXT/MD/CSV/JSON/LOG faylını çata ötürmə
+- Lokal qeydlər, taymer, tam ekran, PWA manifest/service worker faylları
+
+HƏLƏ TAM HAZIR DEYİL:
+- Tam Supabase Auth inteqrasiyası və admin paneli
+- Supabase bulud sinxronizasiyası
+- Web search provayderi
+- Native Android/iOS tətbiqi və arxa plan mikrofonu
+Bu əlavədə mövcud Groq chat, Whisper və Edge TTS kodu əvəz edilmir. Çat sahəsinin selector-u mövcud layihədə fərqlidirsə, sendChat funksiyasındakı #messageInput / #chatForm selector-larını uyğunlaşdır.
