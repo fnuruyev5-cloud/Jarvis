@@ -13,7 +13,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
+// ==========================================
 // AI PROVIDERS
+// ==========================================
+
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
@@ -21,13 +24,29 @@ const COMETAPI_KEY = process.env.COMETAPI_KEY;
 const COMETAPI_MODEL = process.env.COMETAPI_MODEL || "claude-haiku-5-5";
 const COMETAPI_URL = "https://api.cometapi.com/v1/messages";
 
-// claude və ya groq
-const AI_PROVIDER = (process.env.AI_PROVIDER || (COMETAPI_KEY ? "claude" : "groq")).toLowerCase();
+// Claude və ya Groq
+const AI_PROVIDER = (
+  process.env.AI_PROVIDER || (COMETAPI_KEY ? "claude" : "groq")
+).toLowerCase();
 
 const GROQ_STT_MODEL =
   process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
 
+// ==========================================
+// GEMINI NANO BANANA IMAGE GENERATION
+// ==========================================
+
+const IMAGE_API_KEY = process.env.COMETAPI_KEY;
+const IMAGE_MODEL =
+  process.env.IMAGE_MODEL || "gemini-nano-banana-2.1";
+
+const IMAGE_API_URL = "https://api.cometapi.com/v1beta/models";
+
 const FREE_TTS_PROVIDER = "Microsoft Edge Neural TTS";
+
+// ==========================================
+// VOICES
+// ==========================================
 
 const EDGE_VOICES = {
   az: "az-AZ-BabekNeural",
@@ -42,7 +61,12 @@ const EDGE_VOICES = {
   ar: "ar-SA-HamedNeural"
 };
 
+// ==========================================
+// EXPRESS CONFIGURATION
+// ==========================================
+
 app.disable("x-powered-by");
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(__dirname, { extensions: ["html"] }));
 
@@ -51,6 +75,10 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }
 });
 
+// ==========================================
+// SYSTEM PROMPT
+// ==========================================
+
 const SYSTEM_PROMPT = `Sən F2 JARVIS adlı ağıllı, faydalı və nəzakətli AI köməkçisisən.
 İstifadəçinin yazdığı və ya danışdığı dildə cavab ver. Azərbaycan dilində aydın, təbii və düzgün yaz.
 Cavabları konkret və faydalı et. İstifadəçi başqa dilə keçərsə, həmin dilə uyğunlaş.
@@ -58,7 +86,10 @@ Cavabları konkret və faydalı et. İstifadəçi başqa dilə keçərsə, həmi
 Özünü ChatGPT və ya başqa məhsul kimi təqdim etmə; adın F2 JARVIS-dir.
 Bilmədiyin faktı uydurma.`;
 
+// ==========================================
 // PROVIDER STATUS
+// ==========================================
+
 function getAIStatus() {
   if (AI_PROVIDER === "claude") {
     return {
@@ -75,25 +106,40 @@ function getAIStatus() {
   };
 }
 
+// ==========================================
+// HEALTH API
+// ==========================================
+
 app.get("/api/health", (_req, res) => {
   const ai = getAIStatus();
 
   res.json({
     ok: true,
     name: "F2 JARVIS",
+
     aiConfigured: ai.configured,
     aiProvider: ai.provider,
     model: ai.model,
+
     groqConfigured: Boolean(GROQ_API_KEY),
     claudeConfigured: Boolean(COMETAPI_KEY),
+
     transcriptionConfigured: Boolean(GROQ_API_KEY),
+
     voiceConfigured: true,
     voiceProvider: FREE_TTS_PROVIDER,
-    voiceModel: "Neural voices (no API key)"
+    voiceModel: "Neural voices (no API key)",
+
+    imageGenerationConfigured: Boolean(IMAGE_API_KEY),
+    imageProvider: "CometAPI / Gemini Nano Banana",
+    imageModel: IMAGE_MODEL
   });
 });
 
+// ==========================================
 // CLAUDE AI
+// ==========================================
+
 async function askClaude(messages) {
   if (!COMETAPI_KEY) {
     throw Object.assign(
@@ -152,7 +198,10 @@ async function askClaude(messages) {
   return answer;
 }
 
+// ==========================================
 // GROQ AI
+// ==========================================
+
 async function askGroq(messages) {
   if (!GROQ_API_KEY) {
     throw Object.assign(
@@ -205,7 +254,10 @@ async function askGroq(messages) {
   return answer;
 }
 
+// ==========================================
 // MAIN CHAT API
+// ==========================================
+
 app.post("/api/chat", async (req, res) => {
   try {
     const messages = Array.isArray(req.body?.messages)
@@ -263,7 +315,135 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// ==========================================
+// GEMINI NANO BANANA 2.1 IMAGE GENERATION
+// ==========================================
+
+app.post("/api/generate-image", async (req, res) => {
+  try {
+    if (!IMAGE_API_KEY) {
+      return res.status(503).json({
+        success: false,
+        error: "COMETAPI_KEY Render Environment-də əlavə edilməyib."
+      });
+    }
+
+    const prompt = typeof req.body?.prompt === "string"
+      ? req.body.prompt.trim()
+      : "";
+
+    if (!prompt || prompt.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: "Şəkil yaratmaq üçün təsvir yaz."
+      });
+    }
+
+    if (prompt.length > 4000) {
+      return res.status(400).json({
+        success: false,
+        error: "Şəkil təsviri maksimum 4000 simvol ola bilər."
+      });
+    }
+
+    const response = await fetch(
+      `${IMAGE_API_URL}/${IMAGE_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": IMAGE_API_KEY
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"]
+          }
+        }),
+        signal: AbortSignal.timeout(180000)
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error("Nano Banana API error:", data);
+
+      return res.status(response.status).json({
+        success: false,
+        error:
+          data?.error?.message ||
+          data?.message ||
+          "Nano Banana şəkil yarada bilmədi."
+      });
+    }
+
+    const parts =
+      data?.candidates?.[0]?.content?.parts || [];
+
+    const imagePart = parts.find(
+      part => part.inlineData?.data
+    );
+
+    const textPart = parts
+      .filter(part => typeof part.text === "string")
+      .map(part => part.text)
+      .join("\n");
+
+    if (!imagePart) {
+      return res.status(502).json({
+        success: false,
+        error: "API şəkil qaytarmadı.",
+        details: textPart || "Şəkil məlumatı tapılmadı."
+      });
+    }
+
+    const mimeType =
+      imagePart.inlineData.mimeType || "image/png";
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
+      return res.status(502).json({
+        success: false,
+        error: "API dəstəklənməyən şəkil formatı qaytardı."
+      });
+    }
+
+    res.json({
+      success: true,
+      provider: "CometAPI / Gemini Nano Banana",
+      model: IMAGE_MODEL,
+      image: `data:${mimeType};base64,${imagePart.inlineData.data}`,
+      mimeType,
+      description: textPart
+    });
+
+  } catch (error) {
+    console.error("Image generation error:", error);
+
+    res.status(
+      error.name === "TimeoutError" ||
+      error.name === "AbortError" ? 504 : 500
+    ).json({
+      success: false,
+      error:
+        error.name === "TimeoutError" ||
+        error.name === "AbortError"
+          ? "Şəkil yaratma vaxtı bitdi. Yenidən yoxla."
+          : "Şəkil yaradılarkən server xətası baş verdi."
+    });
+  }
+});
+
+// ==========================================
 // GROQ WHISPER SPEECH-TO-TEXT
+// ==========================================
+
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
@@ -329,7 +509,10 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
+// ==========================================
 // EDGE NEURAL TEXT-TO-SPEECH
+// ==========================================
+
 app.post("/api/speak", async (req, res) => {
   try {
     const text = typeof req.body?.text === "string"
@@ -391,7 +574,10 @@ app.post("/api/speak", async (req, res) => {
   }
 });
 
+// ==========================================
 // FALLBACK ROUTE
+// ==========================================
+
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({
@@ -405,6 +591,10 @@ app.get("*", (req, res, next) => {
   );
 });
 
+// ==========================================
+// GLOBAL ERROR HANDLER
+// ==========================================
+
 app.use((err, _req, res, _next) => {
   console.error("Server error:", err);
 
@@ -413,8 +603,13 @@ app.use((err, _req, res, _next) => {
   });
 });
 
+// ==========================================
+// START SERVER
+// ==========================================
+
 app.listen(PORT, () => {
   console.log(`F2 JARVIS server listening on ${PORT}`);
   console.log(`AI Provider: ${AI_PROVIDER}`);
+  console.log(`Image Provider: CometAPI / ${IMAGE_MODEL}`);
 });
-  
+      
