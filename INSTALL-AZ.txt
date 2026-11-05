@@ -1,43 +1,29 @@
-F2 JARVIS — ULTIMATE ADD-ON
+F2 JARVIS TOOLS ADD-ON — QURAŞDIRMA
 
-Bu paket köhnə layihəni əvəz etmir. Əvvəl GitHub repo-nun backup ZIP faylını saxla.
+1) ZIP faylını aç.
+2) f2-tools-addon.css və f2-tools-addon.js fayllarını GitHub layihənin əsas qovluğuna yüklə.
+3) index.html faylını aç. </head> bağlanışından əvvəl əlavə et:
 
-1) Bu ZIP-dəki jarvis-ultimate-addon.js, jarvis-ultimate-addon.css, jarvis-sw.js və manifest.webmanifest fayllarını index.html/server.js ilə eyni public kök qovluğa əlavə et.
+<link rel="stylesheet" href="./f2-tools-addon.css">
 
-2) index.html <head> hissəsinə əlavə et:
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/jarvis-ultimate-addon.css">
+4) index.html faylında </body> bağlanışından əvvəl əlavə et:
 
-</body>-dən əvvəl əlavə et:
-<script src="/jarvis-ultimate-addon.js" defer></script>
-Mövcud app.js və face.js skriptlərini SİLMƏ.
+<script src="./f2-tools-addon.js"></script>
 
-3) Şəkil AI analizi:
-server-vision-route.js faylının içindəki route-u server.js-ə express.json middleware-dən SONRA və catch-all route-dan ƏVVƏL əlavə et. JSON body limit 12mb olmalıdır (mövcud middleware ayarını yoxla).
-Render Environment:
-GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
-Mövcud GROQ_API_KEY server secret olaraq qalsın. Model hesabında aktiv deyilsə, Groq Console-da vision dəstəkləyən model seç. Kod server.js-də GROQ_API_KEY və ya process.env.GROQ_API_KEY dəyişəninin mövcudluğunu fərz edir.
+5) GitHub-a commit et. Render avtomatik deploy etmirsə, Manual Deploy et.
 
-4) OCR:
-Addon skriptindən əvvəl index.html-ə əlavə et:
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-OCR ilk istifadədə internet tələb edir. QR üçün brauzer BarcodeDetector API dəstəkləməlidir.
+FUNKSİYALAR
+- Ekranın sağ-altında JARVIS TOOLS paneli.
+- Kamera açmaq, şəkil çəkmək və JPG yükləmək.
+- Kod bloklarında “Kodu kopyala” düyməsi.
+- /api/generate-image endpoint-i ilə AI şəkil yaratmaq.
+- Spline 3D səhifəsini açmaq.
+- MediaPipe və TensorFlow.js kitabxanalarının mövcudluğunu yoxlamaq.
 
-5) Supabase:
-supabase-schema.sql faylını Supabase SQL Editor-də icra et. Bu, cədvəllər və RLS yaradır; özü-özlüyündə login ekranı və bulud sinxronizasiyası yaratmır. Service role key-i frontend-ə qoyma.
-
-6) GitHub-a commit et, Render deploy tamamlandıqdan sonra saytı yenilə.
-
-DAXİL OLANLAR:
-- Command Center, vaxt/onlayn statusu, dəstəklənərsə batareya
-- Kamera preview, ön/arxa kamera, foto çəkmə və yükləmə
-- Groq Vision route nümunəsi
-- OCR/QR dəstək nöqtələri, TXT/MD/CSV/JSON/LOG faylını çata ötürmə
-- Lokal qeydlər, taymer, tam ekran, PWA manifest/service worker faylları
-
-HƏLƏ TAM HAZIR DEYİL:
-- Tam Supabase Auth inteqrasiyası və admin paneli
-- Supabase bulud sinxronizasiyası
-- Web search provayderi
-- Native Android/iOS tətbiqi və arxa plan mikrofonu
-Bu əlavədə mövcud Groq chat, Whisper və Edge TTS kodu əvəz edilmir. Çat sahəsinin selector-u mövcud layihədə fərqlidirsə, sendChat funksiyasındakı #messageInput / #chatForm selector-larını uyğunlaşdır.
+VACİB
+- Kamera üçün HTTPS və brauzer kamera icazəsi lazımdır.
+- AI şəkil yaratmaq üçün server.js-də /api/generate-image endpoint-i olmalı, Render Environment-də COMETAPI_KEY təyin edilməlidir.
+- Şəkil API-si ödənişli ola bilər; CometAPI tarifini yoxla.
+- Bu əlavədə MediaPipe/TensorFlow.js modelləri avtomatik yüklənmir. Yalnız kitabxanaların olub-olmadığı yoxlanır; real face/hand/object tracking üçün model inteqrasiyası ayrıca tələb olunur.
+- API açarını heç vaxt index.html və ya JavaScript frontend faylına yazma.
+- Mövcud server.js, style.css və hologram/canvas dizaynını silmə; bu ZIP yalnız əlavə fayllardır.

@@ -1,0 +1,15 @@
+/* F2 JARVIS Tools Add-on — isolated styles */
+#f2ToolsLauncher{position:fixed;right:16px;bottom:18px;z-index:99990;border:1px solid rgba(61,224,255,.55);background:linear-gradient(135deg,#071b2a,#10132c);color:#dffaff;border-radius:999px;padding:12px 17px;font:700 13px system-ui;letter-spacing:.08em;box-shadow:0 0 24px #16c9ff44;cursor:pointer}
+#f2ToolsPanel{position:fixed;right:14px;bottom:72px;z-index:99991;width:min(340px,calc(100vw - 28px));max-height:75vh;overflow:auto;background:rgba(5,12,24,.96);border:1px solid rgba(61,224,255,.4);border-radius:18px;padding:16px;color:#e9faff;font:14px system-ui;box-shadow:0 12px 45px #000b,0 0 28px #00cfff22;backdrop-filter:blur(18px);display:none}
+#f2ToolsPanel.open{display:block}
+#f2ToolsPanel h3{margin:0 0 12px;color:#65eaff;font-size:16px}
+#f2ToolsPanel button,.f2-tool-btn{border:1px solid #35cbe866;background:#10253a;color:#e9fbff;border-radius:10px;padding:10px 12px;font-weight:650;cursor:pointer}
+#f2ToolsPanel button:hover,.f2-tool-btn:hover{background:#153b55}
+#f2ToolsPanel .f2-tools-row{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+#f2CameraVideo{width:100%;background:#02070c;border-radius:12px;margin-top:10px;display:none}
+#f2CameraCanvas{display:none}
+#f2ImagePrompt{width:100%;min-height:82px;resize:vertical;box-sizing:border-box;background:#071522;color:#e9fbff;border:1px solid #35cbe866;border-radius:10px;padding:10px;font:14px system-ui}
+#f2ImageResult{width:100%;border-radius:12px;margin-top:10px;display:none}
+.f2-copy-code{float:right;margin:0 0 6px 8px;padding:5px 9px;border:1px solid #3de0ff88;border-radius:7px;background:#092033;color:#9af2ff;font:600 11px system-ui;cursor:pointer}
+pre{position:relative}
+.f2-tools-note{font-size:12px;color:#9bb8c8;line-height:1.5}
