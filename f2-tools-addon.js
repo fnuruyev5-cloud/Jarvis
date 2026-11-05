@@ -1,334 +1,347 @@
+/* ==========================================
+   F2 JARVIS — AI VIDEO EDITOR ADDON
+   Upload • AI Edit • 4K Upscale
+========================================== */
 
-/* F2 JARVIS — PREMIUM AI TOOLS */
 (() => {
-  if (window.__F2_TOOLS_ADDON__) return;
-  window.__F2_TOOLS_ADDON__ = true;
+  "use strict";
+
+  if (window.F2VideoEditorLoaded) return;
+  window.F2VideoEditorLoaded = true;
+
+  const style = document.createElement("style");
+  style.id = "f2-video-editor-inline";
+  document.head.appendChild(style);
+
+  const launcher = document.createElement("button");
+  launcher.id = "f2VideoEditorLauncher";
+  launcher.innerHTML = "✦ AI VIDEO EDITOR";
+
+  const panel = document.createElement("section");
+  panel.id = "f2VideoEditorPanel";
+
+  panel.innerHTML = `
+    <div class="f2ve-header">
+      <div>
+        <div class="f2ve-title">F2 AI VIDEO EDITOR</div>
+        <div class="f2ve-subtitle">AI-powered video studio</div>
+      </div>
+      <button id="f2veClose">✕</button>
+    </div>
+
+    <div class="f2ve-content">
+
+      <div class="f2ve-upload" id="f2veDrop">
+        <div class="f2ve-upload-icon">＋</div>
+        <strong>Video yüklə</strong>
+        <span>MP4, MOV, WEBM</span>
+        <input type="file" id="f2veFile" accept="video/*" hidden>
+        <button id="f2veChoose">Video seç</button>
+      </div>
+
+      <div id="f2vePreviewBox" hidden>
+        <video id="f2vePreview" controls playsinline></video>
+        <div id="f2veFileName"></div>
+        <button id="f2veRemove" class="f2ve-secondary">
+          Videonu sil
+        </button>
+      </div>
+
+      <div class="f2ve-label">AI-yə nə etmək istədiyini yaz</div>
+
+      <textarea id="f2vePrompt"
+        placeholder="Məsələn: Arxa fonu futuristik şəhərlə dəyiş, videoya cinematic effekt əlavə et..."></textarea>
+
+      <div class="f2ve-label">Redaktə modeli</div>
+
+      <select id="f2veModel">
+        <option value="gen4_aleph">Runway Gen-4 Aleph</option>
+      </select>
+
+      <button id="f2veEdit" class="f2ve-primary">
+        ✦ AI İLƏ REDAKTƏ ET
+      </button>
+
+      <div class="f2ve-divider"></div>
+
+      <div class="f2ve-label">Video keyfiyyətini yüksəlt</div>
+
+      <select id="f2veQuality">
+        <option value="4K">4K Ultra HD</option>
+        <option value="1080p">1080p Full HD</option>
+      </select>
+
+      <button id="f2veUpscale" class="f2ve-secondary">
+        ⬆ KEYFİYYƏTİ YÜKSƏLT
+      </button>
+
+      <div id="f2veStatus">Hazırdır.</div>
+
+      <div id="f2veResultBox" hidden>
+        <div class="f2ve-label">Nəticə</div>
+        <video id="f2veResult" controls playsinline></video>
+        <a id="f2veDownload" download="f2-jarvis-edited-video.mp4">
+          Videonu yüklə
+        </a>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(launcher);
+  document.body.appendChild(panel);
 
   const $ = id => document.getElementById(id);
 
-  const launcher = document.createElement("button");
-  launcher.id = "f2ToolsLauncher";
-  launcher.type = "button";
-  launcher.textContent = "✦ JARVIS TOOLS";
+  let selectedFile = null;
+  let originalURL = null;
+  let jobTimer = null;
 
-  const panel = document.createElement("section");
-  panel.id = "f2ToolsPanel";
-
-  panel.innerHTML = `
-    <div class="f2-tools-header">
-      <div><small>F2 SYSTEM</small><h3>✦ JARVIS TOOLS</h3></div>
-      <button id="f2ToolsClose">✕</button>
-    </div>
-
-    <div class="f2-tool-section">
-      <h4>📷 AI Kamera</h4>
-      <div class="f2-tools-row">
-        <button id="f2CameraStart">Kameranı aç</button>
-        <button id="f2CameraCapture">Şəkil çək</button>
-        <button id="f2CameraStop">Bağla</button>
-      </div>
-      <video id="f2CameraVideo" autoplay playsinline></video>
-      <canvas id="f2CameraCanvas"></canvas>
-      <button id="f2CameraAsk" class="f2-wide-btn">JARVIS, bunu analiz et</button>
-      <button id="f2CameraDownload" class="f2-wide-btn">Şəkli yüklə</button>
-      <p class="f2-tools-note" id="f2CameraStatus">Kamera hazırdır.</p>
-    </div>
-
-    <div class="f2-tool-section">
-      <h4>🎨 AI Şəkil generatoru</h4>
-      <textarea id="f2ImagePrompt" placeholder="Şəkli təsvir et..."></textarea>
-      <button id="f2GenerateImage" class="f2-wide-btn">✦ Şəkil yarat</button>
-      <p id="f2ImageStatus" class="f2-tools-note">Hazırdır.</p>
-      <img id="f2ImageResult" alt="AI nəticəsi">
-      <a id="f2ImageDownload" download="f2-jarvis.png">Şəkli yüklə</a>
-    </div>
-
-    <div class="f2-tool-section">
-      <h4>🎬 AI Video generatoru</h4>
-      <textarea id="f2VideoPrompt" placeholder="Video səhnəsini təsvir et..."></textarea>
-      <label for="f2VideoDuration">Video müddəti</label>
-      <select id="f2VideoDuration">
-        <option value="5">5 saniyə</option>
-        <option value="10">10 saniyə</option>
-        <option value="15">15 saniyə</option>
-      </select>
-      <button id="f2GenerateVideo" class="f2-wide-btn">🎬 Video yarat</button>
-      <p id="f2VideoStatus" class="f2-tools-note">Video generatoru hazırdır.</p>
-      <video id="f2VideoResult" controls playsinline></video>
-    </div>
-
-    <div class="f2-tool-section">
-      <h4>🧠 Əlavə alətlər</h4>
-      <div class="f2-tools-row">
-        <button id="f2OpenSpline">Spline 3D</button>
-        <button id="f2CheckVision">Vision yoxla</button>
-      </div>
-    </div>
-
-    <div class="f2-tools-footer">F2 JARVIS • TOOLS SYSTEM</div>
-  `;
-
-  document.body.append(launcher, panel);
-
-  const toggle = () => panel.classList.toggle("open");
-  launcher.addEventListener("click", toggle);
-  $("f2ToolsClose").addEventListener("click", () => panel.classList.remove("open"));
-
-  // CAMERA
-  let cameraStream = null;
-  let capturedBlob = null;
-
-  const video = $("f2CameraVideo");
-  const canvas = $("f2CameraCanvas");
-  const cameraStatus = $("f2CameraStatus");
-
-  $("f2CameraStart").addEventListener("click", async () => {
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Kamera üçün HTTPS bağlantısı lazımdır.");
-      }
-
-      stopCamera(false);
-
-      cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
-
-      video.srcObject = cameraStream;
-      video.style.display = "block";
-      await video.play();
-      cameraStatus.textContent = "Kamera aktivdir.";
-    } catch (error) {
-      cameraStatus.textContent = "Kamera xətası: " + error.message;
-    }
-  });
-
-  $("f2CameraCapture").addEventListener("click", captureFrame);
-
-  function captureFrame() {
-    if (!video.videoWidth) {
-      cameraStatus.textContent = "Əvvəl kameranı aç.";
-      return false;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-
-    return true;
+  function status(message, error = false) {
+    $("f2veStatus").textContent = message;
+    $("f2veStatus").style.color = error ? "#ff7777" : "#65eaff";
   }
 
-  $("f2CameraAsk").addEventListener("click", async () => {
-    if (!captureFrame()) return;
+  function setBusy(busy) {
+    $("f2veEdit").disabled = busy;
+    $("f2veUpscale").disabled = busy;
 
-    cameraStatus.textContent = "JARVIS görüntünü analiz edir...";
+    $("f2veEdit").textContent = busy
+      ? "İŞLƏNİR..."
+      : "✦ AI İLƏ REDAKTƏ ET";
 
-    try {
-      const image = canvas.toDataURL("image/jpeg", 0.75);
+    $("f2veUpscale").textContent = busy
+      ? "İŞLƏNİR..."
+      : "⬆ KEYFİYYƏTİ YÜKSƏLT";
+  }
 
-      const response = await fetch("/api/vision", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image,
-          prompt: "Bu görüntünü diqqətlə analiz et. Gördüklərini Azərbaycan dilində izah et."
-        })
-      });
+  function openPanel() {
+    panel.classList.add("active");
+  }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Vision xətası");
+  function closePanel() {
+    panel.classList.remove("active");
+  }
 
-      const answer = data.answer || data.text;
-      if (!answer) throw new Error("AI cavabı gəlmədi.");
+  launcher.addEventListener("click", openPanel);
+  $("f2veClose").addEventListener("click", closePanel);
 
-      cameraStatus.textContent = answer;
+  $("f2veChoose").addEventListener("click", () => {
+    $("f2veFile").click();
+  });
 
-      if (typeof window.askJarvis === "function") {
-        window.askJarvis("Kamera analizi: " + answer, true);
-      } else if (typeof window.speak === "function") {
-        window.speak(answer);
-      }
-    } catch (error) {
-      cameraStatus.textContent = "Xəta: " + error.message;
+  $("f2veDrop").addEventListener("click", event => {
+    if (event.target.tagName !== "BUTTON") {
+      $("f2veFile").click();
     }
   });
 
-  $("f2CameraDownload").addEventListener("click", () => {
-    if (!captureFrame()) return;
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/jpeg", 0.92);
-    link.download = "f2-jarvis-camera.jpg";
-    link.click();
+  $("f2veFile").addEventListener("change", event => {
+    const file = event.target.files[0];
+    if (file) loadVideo(file);
   });
 
-  $("f2CameraStop").addEventListener("click", () => stopCamera());
-
-  function stopCamera(update = true) {
-    cameraStream?.getTracks().forEach(track => track.stop());
-    cameraStream = null;
-    video.srcObject = null;
-    video.style.display = "none";
-    if (update) cameraStatus.textContent = "Kamera bağlandı.";
-  }
-
-  window.addEventListener("pagehide", () => stopCamera(false));
-
-  // IMAGE GENERATION
-  $("f2GenerateImage").addEventListener("click", async () => {
-    const prompt = $("f2ImagePrompt").value.trim();
-    const status = $("f2ImageStatus");
-    const button = $("f2GenerateImage");
-
-    if (prompt.length < 3) {
-      status.textContent = "Əvvəl təsvir yaz.";
+  function loadVideo(file) {
+    if (!file.type.startsWith("video/")) {
+      status("Video faylı seçilməlidir.", true);
       return;
     }
 
-    button.disabled = true;
-    status.textContent = "Şəkil yaradılır...";
+    if (file.size > 200 * 1024 * 1024) {
+      status("Video maksimum 200 MB ola bilər.", true);
+      return;
+    }
+
+    selectedFile = file;
+
+    if (originalURL) URL.revokeObjectURL(originalURL);
+
+    originalURL = URL.createObjectURL(file);
+
+    $("f2vePreview").src = originalURL;
+    $("f2veFileName").textContent =
+      file.name + " • " + (file.size / 1024 / 1024).toFixed(1) + " MB";
+
+    $("f2vePreviewBox").hidden = false;
+    $("f2veDrop").hidden = true;
+
+    $("f2veResultBox").hidden = true;
+
+    status("Video yükləndi. Redaktəyə hazırsan.");
+  }
+
+  $("f2veRemove").addEventListener("click", () => {
+    selectedFile = null;
+    $("f2veFile").value = "";
+    $("f2vePreview").pause();
+    $("f2vePreview").removeAttribute("src");
+    $("f2vePreviewBox").hidden = true;
+    $("f2veDrop").hidden = false;
+    $("f2veResultBox").hidden = true;
+
+    if (originalURL) {
+      URL.revokeObjectURL(originalURL);
+      originalURL = null;
+    }
+
+    status("Video silindi.");
+  });
+
+  async function submitVideo(endpoint, extra = {}) {
+    if (!selectedFile) {
+      status("Əvvəlcə video yüklə.", true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("video", selectedFile);
+
+    Object.entries(extra).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+
+    setBusy(true);
+    status("Video serverə göndərilir...");
 
     try {
-      const response = await fetch("/api/generate-image", {
+      const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: formData
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Şəkil yaradıla bilmədi.");
 
-      const image = data.image || data.imageUrl || data.dataUrl;
-      if (!image) throw new Error("Şəkil məlumatı gəlmədi.");
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Server xətası");
+      }
 
-      $("f2ImageResult").src = image;
-      $("f2ImageResult").style.display = "block";
-      $("f2ImageDownload").href = image;
-      $("f2ImageDownload").style.display = "block";
-      status.textContent = "✓ Şəkil hazırdır.";
+      const videoUrl =
+        data.videoUrl ||
+        data.video_url ||
+        data.url;
+
+      if (videoUrl) {
+        showResult(videoUrl);
+        status("Video hazırdır!");
+        return;
+      }
+
+      const jobId = data.id || data.jobId || data.task_id;
+
+      if (jobId) {
+        status("AI videonu hazırlayır...");
+        pollJob(jobId);
+        return;
+      }
+
+      throw new Error("Server video nəticəsi qaytarmadı.");
+
     } catch (error) {
-      status.textContent = "Xəta: " + error.message;
+      status(error.message || "Video redaktəsi uğursuz oldu.", true);
     } finally {
-      button.disabled = false;
+      setBusy(false);
     }
-  });
+  }
 
-  // VIDEO GENERATION
-  $("f2GenerateVideo").addEventListener("click", async () => {
-    const prompt = $("f2VideoPrompt").value.trim();
-    const duration = Number($("f2VideoDuration").value);
-    const button = $("f2GenerateVideo");
-    const status = $("f2VideoStatus");
+  async function pollJob(jobId) {
+    let attempts = 0;
 
-    if (prompt.length < 3) {
-      status.textContent = "Video təsviri yaz.";
-      return;
-    }
+    clearInterval(jobTimer);
 
-    button.disabled = true;
-    status.textContent = "Video yaradılması başladılır...";
+    jobTimer = setInterval(async () => {
+      attempts++;
 
-    try {
-      const response = await fetch("/api/videos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, seconds: duration })
-      });
+      if (attempts > 120) {
+        clearInterval(jobTimer);
+        status("İşləmə vaxtı bitdi. Yenidən yoxla.", true);
+        return;
+      }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Video başlatmaq olmadı.");
+      try {
+        const response = await fetch(
+          "/api/videos/" + encodeURIComponent(jobId)
+        );
 
-      const id = data.id || data.video_id;
-      if (!id) throw new Error("Video tapşırıq ID-si gəlmədi.");
+        const data = await response.json();
 
-      status.textContent = "Video hazırlanır...";
+        if (!response.ok) {
+          throw new Error(data.error || "Status yoxlanılmadı.");
+        }
 
-      let completed = false;
+        const state = String(
+          data.status || data.state || ""
+        ).toLowerCase();
 
-      for (let attempt = 0; attempt < 90; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        const url =
+          data.videoUrl ||
+          data.video_url ||
+          data.url ||
+          data.output?.url;
 
-        const check = await fetch("/api/videos/" + encodeURIComponent(id));
-        const result = await check.json();
+        if (
+          url ||
+          ["completed", "complete", "succeeded", "success", "done"].includes(state)
+        ) {
+          clearInterval(jobTimer);
 
-        if (!check.ok) throw new Error(result.error || "Video statusu alınmadı.");
+          if (url) {
+            showResult(url);
+            status("Video uğurla hazırlandı!");
+          } else {
+            status("Video tamamlandı, amma nəticə linki tapılmadı.", true);
+          }
 
-        const state = String(result.status || result.state || "").toLowerCase();
-
-        if (["completed", "succeeded", "success", "done"].includes(state)) {
-          const url = result.url || result.video_url || result.output?.url;
-          if (!url) throw new Error("Hazır video linki gəlmədi.");
-
-          $("f2VideoResult").src = url;
-          $("f2VideoResult").style.display = "block";
-          status.textContent = "✓ Video hazırdır.";
-          completed = true;
-          break;
+          setBusy(false);
+          return;
         }
 
         if (["failed", "error", "cancelled"].includes(state)) {
-          throw new Error(result.error || "Video yaradılması uğursuz oldu.");
+          clearInterval(jobTimer);
+          status(data.error || "AI video hazırlaya bilmədi.", true);
+          setBusy(false);
+          return;
         }
+
+        status("Video hazırlanır... " + attempts);
+
+      } catch (error) {
+        clearInterval(jobTimer);
+        status(error.message, true);
+        setBusy(false);
       }
-
-      if (!completed) status.textContent = "Video hələ hazırlanır. Sonra yenidən yoxla.";
-    } catch (error) {
-      status.textContent = "Xəta: " + error.message;
-    } finally {
-      button.disabled = false;
-    }
-  });
-
-  // OTHER TOOLS
-  $("f2OpenSpline").addEventListener("click", () => {
-    window.open("https://app.spline.design/", "_blank", "noopener,noreferrer");
-  });
-
-  $("f2CheckVision").addEventListener("click", () => {
-    alert("F2 JARVIS VISION\nKamera analiz funksiyası server API vasitəsilə işləyir.");
-  });
-
-  // COPY CODE BUTTONS
-  function addCopyButtons(root = document) {
-    root.querySelectorAll("pre").forEach(pre => {
-      if (pre.dataset.f2CopyReady) return;
-      pre.dataset.f2CopyReady = "1";
-
-      const button = document.createElement("button");
-      button.className = "f2-copy-code";
-      button.type = "button";
-      button.textContent = "Kodu kopyala";
-
-      button.addEventListener("click", async () => {
-        const code = pre.querySelector("code")?.innerText || pre.innerText;
-
-        try {
-          await navigator.clipboard.writeText(code);
-          button.textContent = "Kopyalandı ✓";
-        } catch {
-          const area = document.createElement("textarea");
-          area.value = code;
-          document.body.append(area);
-          area.select();
-          const ok = document.execCommand("copy");
-          area.remove();
-          button.textContent = ok ? "Kopyalandı ✓" : "Kopyalanmadı";
-        }
-
-        setTimeout(() => button.textContent = "Kodu kopyala", 1600);
-      });
-
-      pre.insertBefore(button, pre.firstChild);
-    });
+    }, 5000);
   }
 
-  addCopyButtons();
+  function showResult(url) {
+    $("f2veResult").src = url;
+    $("f2veDownload").href = url;
+    $("f2veResultBox").hidden = false;
+  }
 
-  new MutationObserver(mutations => {
-    mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
-      if (node.nodeType === 1) addCopyButtons(node.matches?.("pre") ? node.parentNode : node);
-    }));
-  }).observe(document.body, { childList: true, subtree: true });
+  $("f2veEdit").addEventListener("click", () => {
+    const prompt = $("f2vePrompt").value.trim();
+
+    if (!prompt) {
+      status("Redaktə üçün göstəriş yaz.", true);
+      return;
+    }
+
+    submitVideo("/api/videos/edit", {
+      prompt,
+      model: $("f2veModel").value
+    });
+  });
+
+  $("f2veUpscale").addEventListener("click", () => {
+    submitVideo("/api/videos/upscale", {
+      quality: $("f2veQuality").value
+    });
+  });
+
+  window.F2VideoEditor = {
+    open: openPanel,
+    close: closePanel,
+    loadVideo
+  };
 
 })();
- 
