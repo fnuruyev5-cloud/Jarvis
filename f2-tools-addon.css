@@ -1,231 +1,253 @@
+/* ==========================================
+   F2 JARVIS — AI VIDEO EDITOR PREMIUM UI
+========================================== */
 
-/* F2 JARVIS — PREMIUM TOOLS UI */
-
-#f2ToolsLauncher {
+#f2VideoEditorLauncher {
   position: fixed;
   right: 16px;
-  bottom: 18px;
+  bottom: 82px;
   z-index: 99990;
-  border: 1px solid rgba(61,224,255,.65);
-  background: linear-gradient(135deg,#071b2a,#10132c);
+  border: 1px solid rgba(61,224,255,.55);
+  background: linear-gradient(135deg,#071b2a,#17133b);
   color: #dffaff;
-  border-radius: 999px;
-  padding: 13px 18px;
-  font: 800 12px system-ui;
-  letter-spacing: .09em;
-  box-shadow: 0 0 20px #16c9ff44,inset 0 0 12px #16c9ff12;
+  padding: 13px 19px;
+  border-radius: 15px;
+  font-weight: 800;
+  letter-spacing: .5px;
   cursor: pointer;
-  transition: .25s ease;
+  box-shadow: 0 0 25px rgba(61,224,255,.16);
 }
 
-#f2ToolsLauncher:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 0 30px #16c9ff77;
+#f2VideoEditorLauncher:hover {
+  box-shadow: 0 0 28px rgba(61,224,255,.4);
+  transform: translateY(-2px);
 }
 
-#f2ToolsPanel {
+#f2VideoEditorPanel {
   position: fixed;
-  right: 14px;
-  bottom: 75px;
-  z-index: 99991;
-  width: min(380px,calc(100vw - 28px));
-  max-height: 78vh;
-  overflow-y: auto;
-  padding: 17px;
-  background: rgba(4,11,23,.97);
-  border: 1px solid rgba(61,224,255,.4);
-  border-radius: 20px;
-  color: #e9faff;
-  font: 14px system-ui;
-  box-shadow: 0 15px 50px #000c,0 0 30px #00cfff20;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  display: none;
+  z-index: 99999;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%) translateX(120%);
+  width: min(430px, calc(100vw - 24px));
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #eafaff;
+  background: rgba(5,12,25,.97);
+  border: 1px solid rgba(61,224,255,.3);
+  border-radius: 22px;
+  box-shadow: 0 0 50px rgba(0,0,0,.65),
+              0 0 30px rgba(61,224,255,.09);
+  backdrop-filter: blur(22px);
+  transition: transform .35s ease;
 }
 
-#f2ToolsPanel.open {
-  display: block;
-  animation: f2ToolsEnter .25s ease;
+#f2VideoEditorPanel.active {
+  transform: translateY(-50%) translateX(0);
 }
 
-@keyframes f2ToolsEnter {
-  from { opacity: 0; transform: translateY(12px) scale(.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.f2-tools-header {
+.f2ve-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding: 19px;
+  border-bottom: 1px solid rgba(61,224,255,.16);
+  background: linear-gradient(110deg,rgba(61,224,255,.09),transparent);
 }
 
-.f2-tools-header small {
-  color: #69dff5;
-  font-size: 10px;
-  letter-spacing: .18em;
-}
-
-.f2-tools-header h3 {
-  margin: 4px 0 0;
+.f2ve-title {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
   color: #65eaff;
-  font-size: 17px;
 }
 
-#f2ToolsClose {
-  width: 34px;
-  height: 34px;
+.f2ve-subtitle {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #849aaa;
 }
 
-#f2ToolsPanel .f2-tool-section {
-  padding: 13px 0;
-  border-top: 1px solid #35cbe829;
+#f2veClose {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 21px;
+  cursor: pointer;
 }
 
-#f2ToolsPanel h4 {
-  margin: 0 0 12px;
-  color: #b9f5ff;
+.f2ve-content {
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.f2ve-upload {
+  min-height: 145px;
+  border: 1px dashed rgba(61,224,255,.5);
+  border-radius: 17px;
+  background: rgba(61,224,255,.045);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.f2ve-upload-icon {
+  font-size: 35px;
+  color: #65eaff;
+}
+
+.f2ve-upload strong {
   font-size: 14px;
 }
 
-#f2ToolsPanel button {
-  border: 1px solid #35cbe866;
-  background: linear-gradient(135deg,#10253a,#10203a);
-  color: #e9fbff;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: .2s ease;
+.f2ve-upload span {
+  font-size: 11px;
+  color: #8099aa;
 }
 
-#f2ToolsPanel button:hover {
-  background: #153b55;
-  border-color: #55e8ff;
-}
-
-#f2ToolsPanel button:disabled {
-  opacity: .55;
-  cursor: wait;
-}
-
-#f2ToolsPanel .f2-tools-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 9px 0;
-}
-
-#f2ToolsPanel .f2-wide-btn {
-  width: 100%;
-  margin-top: 10px;
-}
-
-#f2CameraVideo,
-#f2VideoResult {
-  width: 100%;
-  max-height: 240px;
-  object-fit: cover;
-  background: #02070c;
-  border: 1px solid #35cbe844;
-  border-radius: 12px;
-  margin-top: 10px;
-  display: none;
-}
-
-#f2CameraCanvas {
-  display: none;
-}
-
-#f2ImagePrompt,
-#f2VideoPrompt {
-  width: 100%;
-  min-height: 95px;
-  resize: vertical;
-  box-sizing: border-box;
-  background: #071522;
-  color: #e9fbff;
-  border: 1px solid #35cbe866;
-  border-radius: 12px;
-  padding: 12px;
-  font: 14px system-ui;
-  outline: none;
-}
-
-#f2ImagePrompt:focus,
-#f2VideoPrompt:focus {
-  border-color: #52e7ff;
-  box-shadow: 0 0 12px #35cbe833;
-}
-
-#f2VideoDuration {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  color: #e9fbff;
-  background: #071522;
-  border: 1px solid #35cbe866;
-  border-radius: 10px;
-}
-
-#f2ImageResult {
-  width: 100%;
-  border-radius: 12px;
-  margin-top: 12px;
-  border: 1px solid #35cbe866;
-  display: none;
-}
-
-#f2ImageDownload {
-  display: none;
-  margin-top: 10px;
+#f2veChoose {
+  border: 1px solid rgba(61,224,255,.45);
+  background: rgba(61,224,255,.1);
   color: #65eaff;
-  text-decoration: underline;
-}
-
-.f2-tools-note {
-  font-size: 12px;
-  color: #9bb8c8;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.f2-copy-code {
-  float: right;
-  margin: 0 0 7px 8px;
-  padding: 6px 10px;
-  border: 1px solid #3de0ff88;
-  border-radius: 7px;
-  background: #092033;
-  color: #9af2ff;
-  font: 700 11px system-ui;
+  border-radius: 9px;
+  padding: 8px 18px;
   cursor: pointer;
 }
 
-pre { position: relative; }
-
-.f2-tools-footer {
-  padding-top: 12px;
-  border-top: 1px solid #35cbe829;
-  color: #638b9c;
-  font-size: 10px;
-  text-align: center;
-  letter-spacing: .15em;
+#f2vePreview,
+#f2veResult {
+  width: 100%;
+  max-height: 230px;
+  background: #000;
+  border-radius: 13px;
+  margin-top: 10px;
 }
 
-@media (max-width: 480px) {
-  #f2ToolsLauncher {
+#f2veFileName {
+  font-size: 11px;
+  color: #9bb8c9;
+  margin: 9px 0;
+  overflow-wrap: anywhere;
+}
+
+.f2ve-label {
+  display: block;
+  margin: 17px 0 9px;
+  color: #8ceeff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#f2vePrompt,
+#f2veModel,
+#f2veQuality {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(61,224,255,.22);
+  border-radius: 12px;
+  background: #0b1727;
+  color: #eafaff;
+  outline: none;
+  font: inherit;
+}
+
+#f2vePrompt {
+  min-height: 105px;
+  resize: vertical;
+  font-size: 13px;
+}
+
+#f2vePrompt:focus,
+#f2veModel:focus,
+#f2veQuality:focus {
+  border-color: #3de0ff;
+  box-shadow: 0 0 12px rgba(61,224,255,.12);
+}
+
+.f2ve-primary,
+.f2ve-secondary {
+  width: 100%;
+  padding: 13px;
+  margin-top: 13px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.f2ve-primary {
+  border: 0;
+  color: #00121b;
+  background: linear-gradient(110deg,#3de0ff,#8c9bff);
+}
+
+.f2ve-secondary {
+  border: 1px solid rgba(61,224,255,.4);
+  color: #75eaff;
+  background: rgba(61,224,255,.07);
+}
+
+.f2ve-primary:hover,
+.f2ve-secondary:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.f2ve-primary:disabled,
+.f2ve-secondary:disabled {
+  opacity: .5;
+  cursor: wait;
+  transform: none;
+}
+
+.f2ve-divider {
+  height: 1px;
+  margin: 21px 0;
+  background: rgba(61,224,255,.15);
+}
+
+#f2veStatus {
+  margin-top: 15px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(61,224,255,.06);
+  color: #65eaff;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#f2veDownload {
+  display: block;
+  margin-top: 12px;
+  padding: 12px;
+  text-align: center;
+  border-radius: 11px;
+  color: #00121b;
+  background: #65eaff;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+@media(max-width:600px) {
+  #f2VideoEditorLauncher {
     right: 12px;
-    bottom: 12px;
-    padding: 12px 14px;
+    bottom: 75px;
     font-size: 11px;
+    padding: 11px 13px;
   }
 
-  #f2ToolsPanel {
-    right: 10px;
-    bottom: 65px;
-    width: calc(100vw - 20px);
-    max-height: 75vh;
+  #f2VideoEditorPanel {
+    right: 6px;
+    width: calc(100vw - 12px);
+    max-height: 91vh;
   }
-      }
+
+  .f2ve-content {
+    padding: 14px;
+  }
+}
