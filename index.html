@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="az">
 <head>
@@ -5,12 +6,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#02060d">
   <title>F2 JARVIS — AI Assistant</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="/style.css?v=9">
   <link rel="stylesheet" href="/voice-fix.css?v=1">
+
+  <!-- F2 JARVIS TOOLS -->
+  <link rel="stylesheet" href="/f2-tools-addon.css?v=1">
 </head>
+
 <body>
   <canvas id="fx" aria-hidden="true"></canvas>
   <div class="vig"></div>
@@ -29,23 +36,36 @@
   </div>
 
   <div class="flash"></div>
-  <div class="hello"><span>Salam. Mən F2 JARVIS. Səni dinləməyə hazıram.</span></div>
+  <div class="hello">
+    <span>Salam. Mən F2 JARVIS. Səni dinləməyə hazıram.</span>
+  </div>
 
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="F2 JARVIS">
         <span class="brand-mark">F2</span>
-        <span><b>F2 JARVIS</b><small>PERSONAL AI SYSTEM</small></span>
+        <span>
+          <b>F2 JARVIS</b>
+          <small>PERSONAL AI SYSTEM</small>
+        </span>
       </a>
+
       <div class="top-actions">
-        <span class="status-pill"><i></i><span id="connection">Yoxlanılır...</span></span>
+        <span class="status-pill">
+          <i></i>
+          <span id="connection">Yoxlanılır...</span>
+        </span>
         <button class="icon-button" id="settingsBtn" aria-label="Parametrlər">⚙</button>
       </div>
     </header>
 
     <main class="main-layout">
       <section class="hero">
-        <div class="eyebrow"><span class="pulse-dot"></span> NEXT GENERATION AI</div>
+        <div class="eyebrow">
+          <span class="pulse-dot"></span>
+          NEXT GENERATION AI
+        </div>
+
         <h1>Salam, mən <span>JARVIS</span>.</h1>
         <p class="subtitle">F2 JARVIS — şəxsi süni intellekt köməkçin.</p>
 
@@ -53,59 +73,108 @@
           <div class="ring r1"></div>
           <div class="ring r2"></div>
           <div class="ring r3"></div>
-          <div class="stage"><canvas id="face" aria-label="F2 JARVIS hologram üzü"></canvas></div>
+          <div class="stage">
+            <canvas id="face" aria-label="F2 JARVIS hologram üzü"></canvas>
+          </div>
           <div class="core-caption" id="stateLabel">SİSTEM HAZIRDIR</div>
         </div>
       </section>
 
       <section class="chat-panel">
         <div class="chat-heading">
-          <div><span class="chat-kicker">CONVERSATION</span><h2>Söhbət</h2></div>
+          <div>
+            <span class="chat-kicker">CONVERSATION</span>
+            <h2>Söhbət</h2>
+          </div>
           <button class="clear-button" id="clearBtn">Təmizlə</button>
         </div>
 
         <div class="messages" id="messages" aria-live="polite">
           <div class="welcome-message">
             <div class="bot-avatar">F2</div>
-            <div class="bubble"><b>F2 JARVIS</b><p>Salam! Mikrofon düyməsinə bas və mənimlə danış. Sualını bitirəndə avtomatik cavab verəcəyəm.</p></div>
+            <div class="bubble">
+              <b>F2 JARVIS</b>
+              <p>Salam! Mikrofon düyməsinə bas və mənimlə danış. Sualını bitirəndə avtomatik cavab verəcəyəm.</p>
+            </div>
           </div>
         </div>
 
         <form class="composer" id="chatForm">
-          <button type="button" class="voice-button" id="voiceBtn"
-            aria-label="Səsli danışığı başlat" aria-pressed="false" title="Səsli danışığı başlat">🎙</button>
-          <input id="messageInput" type="text" autocomplete="off"
-            placeholder="Mesajını yaz..." aria-label="Mesajını yaz">
+          <button
+            type="button"
+            class="voice-button"
+            id="voiceBtn"
+            aria-label="Səsli danışığı başlat"
+            aria-pressed="false"
+            title="Səsli danışığı başlat">🎙</button>
+
+          <input
+            id="messageInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Mesajını yaz..."
+            aria-label="Mesajını yaz">
+
           <button type="submit" id="sendBtn" aria-label="Göndər">➤</button>
         </form>
-        <div class="voice-hint" id="voiceHint">Səsli danışıq üçün mikrofon düyməsinə bas. Danışıq avtomatik tanınacaq.</div>
-        <div class="panel-foot"><span>GROQ AI</span><span>EDGE NEURAL VOICE</span><span>F2 JARVIS</span></div>
+
+        <div class="voice-hint" id="voiceHint">
+          Səsli danışıq üçün mikrofon düyməsinə bas. Danışıq avtomatik tanınacaq.
+        </div>
+
+        <div class="panel-foot">
+          <span>GROQ AI</span>
+          <span>EDGE NEURAL VOICE</span>
+          <span>F2 JARVIS</span>
+        </div>
       </section>
     </main>
 
-    <footer>F2 JARVIS <span>•</span> Sənin şəxsi süni intellekt köməkçin</footer>
+    <footer>
+      F2 JARVIS <span>•</span> Sənin şəxsi süni intellekt köməkçin
+    </footer>
   </div>
 
   <dialog id="settingsDialog">
     <form method="dialog" class="settings-card">
       <div class="settings-head">
-        <div><small>PERSONALIZATION</small><h3>Parametrlər</h3></div>
+        <div>
+          <small>PERSONALIZATION</small>
+          <h3>Parametrlər</h3>
+        </div>
         <button class="icon-button" aria-label="Bağla">✕</button>
       </div>
+
       <label class="setting-row">
-        <span><b>Səsli cavab</b><small>JARVIS cavablarını səsləndirsin</small></span>
+        <span>
+          <b>Səsli cavab</b>
+          <small>JARVIS cavablarını səsləndirsin</small>
+        </span>
         <input id="speakToggle" type="checkbox" checked>
       </label>
+
       <label class="setting-row">
-        <span><b>Avtomatik cavab səsi</b><small>Səsli suallara danışaraq cavab ver</small></span>
+        <span>
+          <b>Avtomatik cavab səsi</b>
+          <small>Səsli suallara danışaraq cavab ver</small>
+        </span>
         <input id="autoSpeakToggle" type="checkbox" checked>
       </label>
-      <p class="settings-note">Səs: Azərbaycan dili — Babək Neural. Danışıq tempi və tonu optimallaşdırılıb.</p>
+
+      <p class="settings-note">
+        Səs: Azərbaycan dili — Babək Neural. Danışıq tempi və tonu optimallaşdırılıb.
+      </p>
+
       <button class="save-settings" value="close">Bağla</button>
     </form>
   </dialog>
 
+  <!-- Mövcud JARVIS skriptləri -->
   <script src="/face.js?v=9"></script>
   <script src="/app.js?v=9"></script>
+
+  <!-- F2 JARVIS TOOLS ADD-ON -->
+  <script src="/f2-tools-addon.js?v=1"></script>
 </body>
-</html>
+              </html>
+              
