@@ -10,11 +10,21 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
+app.disable("x-powered-by");
+app.use(express.json({ limit: "1mb" }));
+app.use(express.static(__dirname, { extensions: ["html"] }));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }
+});
+
 // ==========================================
-// AI PROVIDERS
+// API CONFIGURATION
 // ==========================================
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -24,17 +34,12 @@ const COMETAPI_KEY = process.env.COMETAPI_KEY;
 const COMETAPI_MODEL = process.env.COMETAPI_MODEL || "claude-haiku-5-5";
 const COMETAPI_URL = "https://api.cometapi.com/v1/messages";
 
-// Claude və ya Groq
 const AI_PROVIDER = (
   process.env.AI_PROVIDER || (COMETAPI_KEY ? "claude" : "groq")
 ).toLowerCase();
 
 const GROQ_STT_MODEL =
   process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
-
-// ==========================================
-// GEMINI NANO BANANA IMAGE GENERATION
-// ==========================================
 
 const IMAGE_API_KEY = process.env.COMETAPI_KEY;
 const IMAGE_MODEL =
@@ -62,33 +67,31 @@ const EDGE_VOICES = {
 };
 
 // ==========================================
-// EXPRESS CONFIGURATION
-// ==========================================
-
-app.disable("x-powered-by");
-
-app.use(express.json({ limit: "1mb" }));
-app.use(express.static(__dirname, { extensions: ["html"] }));
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }
-});
-
-// ==========================================
 // SYSTEM PROMPT
 // ==========================================
 
 const SYSTEM_PROMPT = `Sən F2 JARVIS adlı ağıllı, faydalı və nəzakətli AI köməkçisisən.
-İstifadəçinin yazdığı və ya danışdığı dildə cavab ver. Azərbaycan dilində aydın, təbii və düzgün yaz.
-Cavabları konkret və faydalı et. İstifadəçi başqa dilə keçərsə, həmin dilə uyğunlaş.
-Əgər "Səni kim yaradıb?" deyə soruşsalar, dəqiq belə cavab ver: "Məni F2 Fərid yaradıb."
-Özünü ChatGPT və ya başqa məhsul kimi təqdim etmə; adın F2 JARVIS-dir.
+İstifadəçinin yazdığı və ya danışdığı dildə cavab ver.
+Azərbaycan dilində aydın, təbii və düzgün yaz.
+Cavabları konkret və faydalı et.
+İstifadəçi başqa dilə keçərsə, həmin dilə uyğunlaş.
+Əgər "Səni kim yaradıb?" deyə soruşsalar, dəqiq belə cavab ver:
+"Məni F2 Fərid yaradıb."
+Özünü ChatGPT və ya başqa məhsul kimi təqdim etmə.
+Adın F2 JARVIS-dir.
 Bilmədiyin faktı uydurma.`;
 
 // ==========================================
-// PROVIDER STATUS
+// HELPERS
 // ==========================================
+
+function apiError(res, error, fallback = "Server xətası.") {
+  console.error(error);
+
+  return res.status(error.status || 500).json({
+    error: error.message || fallback
+  });
+}
 
 function getAIStatus() {
   if (AI_PROVIDER === "claude") {
@@ -116,20 +119,14 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     name: "F2 JARVIS",
-
     aiConfigured: ai.configured,
     aiProvider: ai.provider,
     model: ai.model,
-
     groqConfigured: Boolean(GROQ_API_KEY),
     claudeConfigured: Boolean(COMETAPI_KEY),
-
     transcriptionConfigured: Boolean(GROQ_API_KEY),
-
     voiceConfigured: true,
     voiceProvider: FREE_TTS_PROVIDER,
-    voiceModel: "Neural voices (no API key)",
-
     imageGenerationConfigured: Boolean(IMAGE_API_KEY),
     imageProvider: "CometAPI / Gemini Nano Banana",
     imageModel: IMAGE_MODEL
@@ -151,7 +148,7 @@ async function askClaude(messages) {
   const response = await fetch(COMETAPI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${COMETAPI_KEY}`,
+      Authorization: `Bearer ${COMETAPI_KEY}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -166,8 +163,6 @@ async function askClaude(messages) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    console.error("CometAPI Claude error:", data);
-
     throw Object.assign(
       new Error(
         data?.error?.message ||
@@ -215,7 +210,7 @@ async function askGroq(messages) {
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -234,8 +229,6 @@ async function askGroq(messages) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    console.error("Groq error:", data);
-
     throw Object.assign(
       new Error(data?.error?.message || "Groq AI cavabı alınmadı."),
       { status: response.status }
@@ -265,11 +258,10 @@ app.post("/api/chat", async (req, res) => {
       : [];
 
     const safeMessages = messages
-      .filter(
-        m =>
-          m &&
-          ["user", "assistant"].includes(m.role) &&
-          typeof m.content === "string"
+      .filter(m =>
+        m &&
+        ["user", "assistant"].includes(m.role) &&
+        typeof m.content === "string"
       )
       .slice(-12)
       .map(m => ({
@@ -294,7 +286,7 @@ app.post("/api/chat", async (req, res) => {
       answer = await askGroq(safeMessages);
     } else {
       return res.status(500).json({
-        error: "AI_PROVIDER düzgün seçilməyib. claude və ya groq yaz."
+        error: "AI_PROVIDER üçün claude və ya groq seçilməlidir."
       });
     }
 
@@ -305,18 +297,13 @@ app.post("/api/chat", async (req, res) => {
         ? COMETAPI_MODEL
         : GROQ_MODEL
     });
-
   } catch (error) {
-    console.error("Chat error:", error);
-
-    res.status(error.status || 500).json({
-      error: error.message || "AI sorğusu zamanı xəta baş verdi."
-    });
+    return apiError(res, error, "AI sorğusu zamanı xəta baş verdi.");
   }
 });
 
 // ==========================================
-// GEMINI NANO BANANA 2.1 IMAGE GENERATION
+// NANO BANANA IMAGE GENERATION
 // ==========================================
 
 app.post("/api/generate-image", async (req, res) => {
@@ -332,7 +319,7 @@ app.post("/api/generate-image", async (req, res) => {
       ? req.body.prompt.trim()
       : "";
 
-    if (!prompt || prompt.length < 3) {
+    if (prompt.length < 3) {
       return res.status(400).json({
         success: false,
         error: "Şəkil yaratmaq üçün təsvir yaz."
@@ -342,7 +329,7 @@ app.post("/api/generate-image", async (req, res) => {
     if (prompt.length > 4000) {
       return res.status(400).json({
         success: false,
-        error: "Şəkil təsviri maksimum 4000 simvol ola bilər."
+        error: "Təsvir maksimum 4000 simvol ola bilər."
       });
     }
 
@@ -355,13 +342,9 @@ app.post("/api/generate-image", async (req, res) => {
           "x-goog-api-key": IMAGE_API_KEY
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
           generationConfig: {
             responseModalities: ["TEXT", "IMAGE"]
           }
@@ -384,14 +367,13 @@ app.post("/api/generate-image", async (req, res) => {
       });
     }
 
-    const parts =
-      data?.candidates?.[0]?.content?.parts || [];
+    const parts = data?.candidates?.[0]?.content?.parts || [];
 
     const imagePart = parts.find(
       part => part.inlineData?.data
     );
 
-    const textPart = parts
+    const description = parts
       .filter(part => typeof part.text === "string")
       .map(part => part.text)
       .join("\n");
@@ -400,7 +382,7 @@ app.post("/api/generate-image", async (req, res) => {
       return res.status(502).json({
         success: false,
         error: "API şəkil qaytarmadı.",
-        details: textPart || "Şəkil məlumatı tapılmadı."
+        details: description || "Şəkil məlumatı tapılmadı."
       });
     }
 
@@ -410,7 +392,7 @@ app.post("/api/generate-image", async (req, res) => {
     if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
       return res.status(502).json({
         success: false,
-        error: "API dəstəklənməyən şəkil formatı qaytardı."
+        error: "Dəstəklənməyən şəkil formatı."
       });
     }
 
@@ -420,35 +402,34 @@ app.post("/api/generate-image", async (req, res) => {
       model: IMAGE_MODEL,
       image: `data:${mimeType};base64,${imagePart.inlineData.data}`,
       mimeType,
-      description: textPart
+      description
     });
 
   } catch (error) {
     console.error("Image generation error:", error);
 
-    res.status(
+    const timedOut =
       error.name === "TimeoutError" ||
-      error.name === "AbortError" ? 504 : 500
-    ).json({
+      error.name === "AbortError";
+
+    res.status(timedOut ? 504 : 500).json({
       success: false,
-      error:
-        error.name === "TimeoutError" ||
-        error.name === "AbortError"
-          ? "Şəkil yaratma vaxtı bitdi. Yenidən yoxla."
-          : "Şəkil yaradılarkən server xətası baş verdi."
+      error: timedOut
+        ? "Şəkil yaratma vaxtı bitdi. Yenidən yoxla."
+        : "Şəkil yaradılarkən server xətası baş verdi."
     });
   }
 });
 
 // ==========================================
-// GROQ WHISPER SPEECH-TO-TEXT
+// GROQ WHISPER SPEECH TO TEXT
 // ==========================================
 
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
       return res.status(503).json({
-        error: "Səsin mətnə çevrilməsi üçün GROQ_API_KEY lazımdır."
+        error: "GROQ_API_KEY əlavə edilməyib."
       });
     }
 
@@ -479,7 +460,7 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${GROQ_API_KEY}`
+          Authorization: `Bearer ${GROQ_API_KEY}`
         },
         body: form,
         signal: AbortSignal.timeout(90000)
@@ -489,8 +470,6 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error("Groq transcription error:", data);
-
       return res.status(response.status).json({
         error: data?.error?.message || "Səs tanınmadı."
       });
@@ -501,16 +480,12 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Transcription error:", error);
-
-    res.status(500).json({
-      error: "Səs emalı zamanı xəta baş verdi."
-    });
+    return apiError(res, error, "Səs emalı zamanı xəta baş verdi.");
   }
 });
 
 // ==========================================
-// EDGE NEURAL TEXT-TO-SPEECH
+// EDGE NEURAL TEXT TO SPEECH
 // ==========================================
 
 app.post("/api/speak", async (req, res) => {
@@ -532,7 +507,7 @@ app.post("/api/speak", async (req, res) => {
 
     if (text.length > 4500) {
       return res.status(400).json({
-        error: "Mətn çox uzundur. 4500 simvoldan qısa göndərin."
+        error: "Mətn maksimum 4500 simvol ola bilər."
       });
     }
 
@@ -551,7 +526,7 @@ app.post("/api/speak", async (req, res) => {
 
     if (!audioResult?.audio?.length) {
       return res.status(502).json({
-        error: "Pulsuz səs xidməti audio qaytarmadı."
+        error: "Səs xidməti audio qaytarmadı."
       });
     }
 
@@ -566,16 +541,12 @@ app.post("/api/speak", async (req, res) => {
     res.send(audio);
 
   } catch (error) {
-    console.error("Free TTS error:", error);
-
-    res.status(502).json({
-      error: "Pulsuz səs xidməti hazırda cavab vermir."
-    });
+    return apiError(res, error, "Səs xidməti hazırda cavab vermir.");
   }
 });
 
 // ==========================================
-// FALLBACK ROUTE
+// FALLBACK
 // ==========================================
 
 app.get("*", (req, res, next) => {
@@ -604,7 +575,7 @@ app.use((err, _req, res, _next) => {
 });
 
 // ==========================================
-// START SERVER
+// START
 // ==========================================
 
 app.listen(PORT, () => {
@@ -612,4 +583,4 @@ app.listen(PORT, () => {
   console.log(`AI Provider: ${AI_PROVIDER}`);
   console.log(`Image Provider: CometAPI / ${IMAGE_MODEL}`);
 });
-      
+        
