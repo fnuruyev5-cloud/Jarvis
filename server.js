@@ -1,4 +1,3 @@
-
 import express from "express";
 import dotenv from "dotenv";
 import multer from "multer";
@@ -14,73 +13,49 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
-app.disable("x-powered-by");
-app.use(express.json({ limit: "12mb" }));
-app.use(express.static(__dirname, { extensions: ["html"] }));
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
+app.use(express.static(__dirname));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }
+  limits: {
+    fileSize: 200 * 1024 * 1024
+  }
 });
 
-// ==========================================
-// API CONFIGURATION
-// ==========================================
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const COMETAPI_KEY = process.env.COMETAPI_KEY || "";
+const RUNWAY_API_KEY = process.env.RUNWAY_API_KEY || "";
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const GROQ_MODEL =
+  process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
-const COMETAPI_KEY = process.env.COMETAPI_KEY;
-const COMETAPI_MODEL = process.env.COMETAPI_MODEL || "claude-haiku-5-5";
+const COMETAPI_MODEL =
+  process.env.COMETAPI_MODEL || "claude-haiku-5-5";
 
-const COMETAPI_URL = "https://api.cometapi.com/v1/messages";
-const COMET_CHAT_URL = "https://api.cometapi.com/v1/chat/completions";
-const COMET_MODELS_URL = "https://api.cometapi.com/api/models";
-const COMET_VIDEO_URL = "https://api.cometapi.com/v1/videos";
+const VIDEO_MODEL =
+  process.env.VIDEO_MODEL || "wan3.0-prime";
 
-const AI_PROVIDER = (
-  process.env.AI_PROVIDER || (COMETAPI_KEY ? "claude" : "groq")
-).toLowerCase();
-
-const GROQ_STT_MODEL =
-  process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
-
-const IMAGE_API_KEY = COMETAPI_KEY;
 const IMAGE_MODEL =
   process.env.IMAGE_MODEL || "gemini-nano-banana-2.1";
 
-const IMAGE_API_URL = "https://api.cometapi.com/v1beta/models";
+const GROQ_BASE = "https://api.groq.com/openai/v1";
+const COMET_BASE = "https://api.cometapi.com";
 
-const VIDEO_MODEL = process.env.VIDEO_MODEL || "wan3.0-prime";
-
-const FREE_TTS_PROVIDER = "Microsoft Edge Neural TTS";
-
+const RUNWAY_VERSION = "2024-11-06";
 const REQUEST_TIMEOUT = 120000;
 
-// ==========================================
-// MODEL FALLBACK CATALOG
-// ==========================================
-
-const FALLBACK_MODELS = [
-  { id: "hy4", name: "Hy 4", type: "chat" },
-  { id: "gpt-6.2-sol", name: "GPT 6.2 Sol", type: "chat" },
-  { id: "gpt-6.1-terra", name: "GPT 6.1 Terra", type: "vision" },
-  { id: "kimi-k3.1-pro", name: "Kimi K3.1 Pro", type: "vision" },
-  { id: "muse-wonder", name: "Muse Wonder", type: "chat" },
-  { id: "claude-haiku-5-5", name: "Claude Haiku 5.5", type: "vision" },
-  { id: "gpt-6-luna", name: "GPT-6 Luna", type: "vision" },
-  { id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash", type: "chat" },
-  { id: "deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision", type: "vision" },
-  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", type: "chat" },
-  { id: "gpt-image-2.6-sunburst", name: "GPT Image 2.6", type: "image" },
-  { id: "gemini-nano-banana-2.1", name: "Gemini Nano Banana", type: "image" },
-  { id: "flux-3-image", name: "Flux 3 Image", type: "image" },
-  { id: "wan3.0-prime", name: "Wan Video", type: "video" }
-];
-
-// ==========================================
-// VOICES
-// ==========================================
+const SYSTEM_PROMPT = `
+Sənin adın F2 JARVIS-dir.
+Sən ağıllı, peşəkar və mehriban süni intellekt köməkçisisən.
+İstifadəçinin hansı dildə yazdığını müəyyən et və həmin dildə cavab ver.
+Cavablarını aydın, faydalı və təbii yaz.
+Səndən səni kimin yaratdığını soruşsalar belə cavab ver:
+"Məni F2 Fərid yaradıb."
+Özünü ChatGPT kimi təqdim etmə.
+Bilmədiyin məlumatı uydurma.
+`;
 
 const EDGE_VOICES = {
   az: "az-AZ-BabekNeural",
@@ -95,692 +70,722 @@ const EDGE_VOICES = {
   ar: "ar-SA-HamedNeural"
 };
 
-// ==========================================
-// SYSTEM PROMPT
-// ==========================================
+const videoTasks = new Map();
 
-const SYSTEM_PROMPT = `Sən F2 JARVIS adlı ağıllı, faydalı və nəzakətli AI köməkçisisən.
-İstifadəçinin yazdığı və ya danışdığı dildə cavab ver.
-Azərbaycan dilində aydın, təbii və düzgün yaz.
-Cavabları konkret və faydalı et.
-İstifadəçi başqa dilə keçərsə, həmin dilə uyğunlaş.
-Əgər "Səni kim yaradıb?" deyə soruşsalar, dəqiq belə cavab ver:
-"Məni F2 Fərid yaradıb."
-Özünü ChatGPT və ya başqa məhsul kimi təqdim etmə.
-Adın F2 JARVIS-dir.
-Bilmədiyin faktı uydurma.`;
-
-// ==========================================
-// HELPERS
-// ==========================================
-
-function apiError(res, error, fallback = "Server xətası.") {
-  console.error(error);
-
-  return res.status(error.status || 500).json({
-    error: error.message || fallback
+function sendError(res, status, message, extra = {}) {
+  return res.status(status).json({
+    ok: false,
+    error: message,
+    ...extra
   });
 }
 
-function requireCometKey() {
-  if (!COMETAPI_KEY) {
-    throw Object.assign(
-      new Error("COMETAPI_KEY Render Environment-də əlavə edilməyib."),
-      { status: 503 }
-    );
-  }
+function getErrorMessage(data, fallback = "API sorğusu uğursuz oldu.") {
+  return (
+    data?.error?.message ||
+    data?.error?.detail ||
+    data?.message ||
+    data?.detail ||
+    fallback
+  );
 }
 
-async function cometRequest(url, options = {}, timeout = REQUEST_TIMEOUT) {
-  requireCometKey();
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${COMETAPI_KEY}`,
-      ...(options.headers || {})
-    },
-    signal: AbortSignal.timeout(timeout)
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const message =
-      data?.error?.message ||
-      data?.message ||
-      data?.error ||
-      `CometAPI xətası: ${response.status}`;
-
-    throw Object.assign(
-      new Error(typeof message === "string" ? message : JSON.stringify(message)),
-      { status: response.status }
-    );
-  }
-
-  return data;
-}
-
-function getAIStatus() {
-  if (AI_PROVIDER === "claude") {
-    return {
-      configured: Boolean(COMETAPI_KEY),
-      provider: "CometAPI",
-      model: COMETAPI_MODEL
-    };
-  }
-
-  return {
-    configured: Boolean(GROQ_API_KEY),
-    provider: "Groq",
-    model: GROQ_MODEL
-  };
-}
-
-function cleanMessages(messages) {
-  return messages
-    .filter(m =>
-      m &&
-      ["user", "assistant"].includes(m.role) &&
-      typeof m.content === "string"
-    )
-    .slice(-12)
-    .map(m => ({
-      role: m.role,
-      content: m.content.slice(0, 6000)
-    }));
-}
-
-function getTextAnswer(data) {
-  const content = data?.choices?.[0]?.message?.content;
-
-  if (typeof content === "string") return content.trim();
-
-  if (Array.isArray(content)) {
-    return content
-      .filter(part => part.type === "text" || part.text)
-      .map(part => part.text || "")
-      .join("\n")
-      .trim();
-  }
-
-  return "";
-}
-
-// ==========================================
-// MODEL CATALOG
-// ==========================================
-
-let modelCache = [];
-let modelCacheTime = 0;
-
-function inferModelType(model) {
-  const id = String(model.id || model.name || "").toLowerCase();
-  const capabilities = JSON.stringify(
-    model.capabilities || model.abilities || model.supported_parameters || []
-  ).toLowerCase();
-
-  if (
-    id.includes("video") ||
-    id.includes("wan3") ||
-    id.includes("seedance")
-  ) return "video";
-
-  if (
-    id.includes("image") ||
-    id.includes("nano-banana") ||
-    id.includes("flux")
-  ) return "image";
-
-  if (
-    id.includes("vision") ||
-    id.includes("flash-vision") ||
-    capabilities.includes("vision") ||
-    capabilities.includes("image")
-  ) return "vision";
-
-  return "chat";
-}
-
-function normalizeModelList(data) {
-  const list =
-    Array.isArray(data) ? data :
-    Array.isArray(data?.data) ? data.data :
-    Array.isArray(data?.models) ? data.models :
-    Array.isArray(data?.result) ? data.result :
-    [];
-
-  return list
-    .filter(item => item && typeof item === "object")
-    .map(item => {
-      const id = item.id || item.model || item.name;
-
-      if (!id || typeof id !== "string") return null;
-
-      const type = inferModelType(item);
-
-      return {
-        id,
-        name: item.display_name || item.title || item.name || id,
-        type,
-        description: item.description || "",
-        available: item.available !== false
-      };
-    })
-    .filter(Boolean)
-    .filter(model =>
-      !/coming.?soon|deprecated|unavailable/i.test(
-        model.name + " " + model.id
-      )
-    );
-}
-
-async function getModels(force = false) {
-  if (!COMETAPI_KEY) return FALLBACK_MODELS;
-
-  if (
-    !force &&
-    modelCache.length &&
-    Date.now() - modelCacheTime < 10 * 60 * 1000
-  ) {
-    return modelCache;
-  }
+async function fetchJson(url, options = {}, timeout = REQUEST_TIMEOUT) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const data = await cometRequest(
-      COMET_MODELS_URL,
-      { method: "GET" },
-      30000
-    );
-
-    const models = normalizeModelList(data);
-
-    if (models.length) {
-      modelCache = models;
-      modelCacheTime = Date.now();
-      return models;
-    }
-  } catch (error) {
-    console.error("Model catalog error:", error.message);
-  }
-
-  return modelCache.length ? modelCache : FALLBACK_MODELS;
-}
-
-app.get("/api/models", async (req, res) => {
-  try {
-    const models = await getModels(req.query.refresh === "1");
-
-    res.json({
-      success: true,
-      provider: "CometAPI",
-      models
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
     });
-  } catch (error) {
-    apiError(res, error, "Model siyahısı alına bilmədi.");
-  }
-});
 
-// ==========================================
-// HEALTH API
-// ==========================================
+    const contentType = response.headers.get("content-type") || "";
+    let data;
 
-app.get("/api/health", (_req, res) => {
-  const ai = getAIStatus();
-
-  res.json({
-    ok: true,
-    name: "F2 JARVIS",
-    aiConfigured: ai.configured,
-    aiProvider: ai.provider,
-    model: ai.model,
-    groqConfigured: Boolean(GROQ_API_KEY),
-    claudeConfigured: Boolean(COMETAPI_KEY),
-    cometConfigured: Boolean(COMETAPI_KEY),
-    transcriptionConfigured: Boolean(GROQ_API_KEY),
-    voiceConfigured: true,
-    voiceProvider: FREE_TTS_PROVIDER,
-    imageGenerationConfigured: Boolean(IMAGE_API_KEY),
-    imageProvider: "CometAPI",
-    imageModel: IMAGE_MODEL,
-    visionConfigured: Boolean(COMETAPI_KEY),
-    videoConfigured: Boolean(COMETAPI_KEY),
-    videoModel: VIDEO_MODEL
-  });
-});
-
-// ==========================================
-// CLAUDE AI
-// ==========================================
-
-async function askClaude(messages) {
-  requireCometKey();
-
-  const response = await fetch(COMETAPI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${COMETAPI_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: COMETAPI_MODEL,
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages
-    }),
-    signal: AbortSignal.timeout(90000)
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw Object.assign(
-      new Error(
-        data?.error?.message ||
-        data?.message ||
-        "Claude API cavab vermədi."
-      ),
-      { status: response.status }
-    );
-  }
-
-  const answer = Array.isArray(data?.content)
-    ? data.content
-        .filter(block => block.type === "text")
-        .map(block => block.text)
-        .join("\n")
-        .trim()
-    : typeof data?.content === "string"
-      ? data.content.trim()
-      : "";
-
-  if (!answer) {
-    throw Object.assign(
-      new Error("Claude boş cavab qaytardı."),
-      { status: 502 }
-    );
-  }
-
-  return answer;
-}
-
-// ==========================================
-// COMETAPI MODEL CHAT
-// ==========================================
-
-async function askCometModel(messages, model) {
-  const data = await cometRequest(
-    COMET_CHAT_URL,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages
-        ],
-        temperature: 0.7,
-        max_tokens: 2048
-      })
-    },
-    120000
-  );
-
-  const answer = getTextAnswer(data);
-
-  if (!answer) {
-    throw Object.assign(
-      new Error("CometAPI boş cavab qaytardı."),
-      { status: 502 }
-    );
-  }
-
-  return answer;
-}
-
-// ==========================================
-// GROQ AI
-// ==========================================
-
-async function askGroq(messages) {
-  if (!GROQ_API_KEY) {
-    throw Object.assign(
-      new Error("GROQ_API_KEY Render Environment-də əlavə edilməyib."),
-      { status: 503 }
-    );
-  }
-
-  const response = await fetch(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...messages
-        ],
-        temperature: 0.7,
-        max_tokens: 1200
-      }),
-      signal: AbortSignal.timeout(60000)
-    }
-  );
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw Object.assign(
-      new Error(data?.error?.message || "Groq AI cavabı alınmadı."),
-      { status: response.status }
-    );
-  }
-
-  const answer = getTextAnswer(data);
-
-  if (!answer) {
-    throw Object.assign(
-      new Error("Groq boş cavab qaytardı."),
-      { status: 502 }
-    );
-  }
-
-  return answer;
-}
-
-// ==========================================
-// MAIN CHAT API
-// ==========================================
-
-app.post("/api/chat", async (req, res) => {
-  try {
-    const messages = cleanMessages(
-      Array.isArray(req.body?.messages) ? req.body.messages : []
-    );
-
-    if (!messages.length || messages.at(-1).role !== "user") {
-      return res.status(400).json({ error: "Mesaj tapılmadı." });
-    }
-
-    const selectedModel =
-      typeof req.body?.model === "string"
-        ? req.body.model.trim()
-        : "";
-
-    let answer;
-    let provider;
-    let model;
-
-    if (selectedModel) {
-      const models = await getModels();
-      const selected = models.find(item => item.id === selectedModel);
-
-      if (!selected || !["chat", "vision"].includes(selected.type)) {
-        return res.status(400).json({
-          error: "Seçilmiş model mövcud deyil və ya mətn söhbətini dəstəkləmir."
-        });
-      }
-
-      answer = await askCometModel(messages, selectedModel);
-      provider = "CometAPI";
-      model = selectedModel;
-    } else if (AI_PROVIDER === "claude") {
-      answer = await askClaude(messages);
-      provider = "CometAPI / Claude";
-      model = COMETAPI_MODEL;
-    } else if (AI_PROVIDER === "groq") {
-      answer = await askGroq(messages);
-      provider = "Groq";
-      model = GROQ_MODEL;
+    if (contentType.includes("application/json")) {
+      data = await response.json();
     } else {
-      return res.status(500).json({
-        error: "AI_PROVIDER üçün claude və ya groq seçilməlidir."
-      });
+      data = { raw: await response.text() };
     }
 
-    res.json({ answer, provider, model });
-  } catch (error) {
-    apiError(res, error, "AI sorğusu zamanı xəta baş verdi.");
-  }
-});
-
-// ==========================================
-// AI CAMERA / VISION
-// ==========================================
-
-app.post("/api/vision", async (req, res) => {
-  try {
-    requireCometKey();
-
-    const image = req.body?.image;
-    const prompt = typeof req.body?.prompt === "string"
-      ? req.body.prompt.trim()
-      : "Bu görüntünü analiz et və Azərbaycan dilində izah et.";
-
-    const model =
-      typeof req.body?.model === "string" && req.body.model.trim()
-        ? req.body.model.trim()
-        : "deepseek-v4-flash-vision-exp";
-
-    if (typeof image !== "string") {
-      return res.status(400).json({ error: "Şəkil göndərilməyib." });
-    }
-
-    const match = image.match(
-      /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/
-    );
-
-    if (!match) {
-      return res.status(400).json({
-        error: "Şəkil JPEG, PNG və ya WEBP base64 formatında olmalıdır."
-      });
-    }
-
-    if (image.length > 10 * 1024 * 1024) {
-      return res.status(413).json({ error: "Şəkil çox böyükdür." });
-    }
-
-    if (prompt.length > 3000) {
-      return res.status(400).json({ error: "Analiz mətni çox uzundur." });
-    }
-
-    const models = await getModels();
-    const selected = models.find(item => item.id === model);
-
-    if (selected && selected.type !== "vision") {
-      return res.status(400).json({
-        error: "Seçilmiş model Vision dəstəkləmir."
-      });
-    }
-
-    const data = await cometRequest(
-      COMET_CHAT_URL,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: SYSTEM_PROMPT
-            },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-                {
-                  type: "image_url",
-                  image_url: { url: image }
-                }
-              ]
-            }
-          ],
-          max_tokens: 1200,
-          temperature: 0.5
-        })
-      },
-      120000
-    );
-
-    const answer = getTextAnswer(data);
-
-    if (!answer) {
-      throw Object.assign(
-        new Error("Vision modeli analiz cavabı qaytarmadı."),
-        { status: 502 }
+    if (!response.ok) {
+      throw new Error(
+        getErrorMessage(data, `Server xətası: ${response.status}`)
       );
     }
 
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function authHeaders(key, extra = {}) {
+  return {
+    Authorization: `Bearer ${key}`,
+    ...extra
+  };
+}
+
+function getChatMessages(messages) {
+  if (!Array.isArray(messages)) return [];
+
+  return messages
+    .filter(item =>
+      item &&
+      ["user", "assistant", "system"].includes(item.role) &&
+      typeof item.content === "string"
+    )
+    .slice(-30)
+    .map(item => ({
+      role: item.role,
+      content: item.content.slice(0, 20000)
+    }));
+}
+
+async function askGroq(messages) {
+  if (!GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY Render Environment-də tapılmadı.");
+  }
+
+  return fetchJson(`${GROQ_BASE}/chat/completions`, {
+    method: "POST",
+    headers: authHeaders(GROQ_API_KEY, {
+      "Content-Type": "application/json"
+    }),
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  });
+}
+
+async function askComet(messages) {
+  if (!COMETAPI_KEY) {
+    throw new Error("COMETAPI_KEY Render Environment-də tapılmadı.");
+  }
+
+  return fetchJson(`${COMET_BASE}/v1/chat/completions`, {
+    method: "POST",
+    headers: authHeaders(COMETAPI_KEY, {
+      "Content-Type": "application/json"
+    }),
+    body: JSON.stringify({
+      model: COMETAPI_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  });
+}
+
+function extractAnswer(data) {
+  return (
+    data?.choices?.[0]?.message?.content ||
+    data?.content?.map?.(item => item.text || "").join("\n") ||
+    data?.output_text ||
+    data?.message ||
+    ""
+  );
+}
+
+/* ==========================================
+   HEALTH
+========================================== */
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    ok: true,
+    name: "F2 JARVIS",
+    aiConfigured: Boolean(GROQ_API_KEY || COMETAPI_KEY),
+    groqConfigured: Boolean(GROQ_API_KEY),
+    cometConfigured: Boolean(COMETAPI_KEY),
+    runwayConfigured: Boolean(RUNWAY_API_KEY),
+    voiceConfigured: true,
+    imageConfigured: Boolean(COMETAPI_KEY),
+    videoConfigured: Boolean(COMETAPI_KEY),
+    videoEditorConfigured: Boolean(COMETAPI_KEY || RUNWAY_API_KEY),
+    timestamp: new Date().toISOString()
+  });
+});
+
+/* ==========================================
+   MODELS
+========================================== */
+
+app.get("/api/models", (req, res) => {
+  res.json({
+    ok: true,
+    models: [
+      { id: GROQ_MODEL, name: GROQ_MODEL, type: "chat" },
+      { id: COMETAPI_MODEL, name: COMETAPI_MODEL, type: "chat" },
+      { id: IMAGE_MODEL, name: IMAGE_MODEL, type: "image" },
+      { id: VIDEO_MODEL, name: VIDEO_MODEL, type: "video" },
+      { id: "gen4_aleph", name: "Runway Aleph", type: "video-edit" },
+      { id: "upscale_v1", name: "Runway Upscale", type: "upscale" }
+    ]
+  });
+});
+
+/* ==========================================
+   AI CHAT
+========================================== */
+
+app.post("/api/chat", async (req, res) => {
+  try {
+    const messages = getChatMessages(req.body?.messages);
+
+    if (!messages.length) {
+      return sendError(res, 400, "Mesaj boş ola bilməz.");
+    }
+
+    const fullMessages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...messages.filter(item => item.role !== "system")
+    ];
+
+    let data;
+    let provider = "";
+
+    if (process.env.AI_PROVIDER === "groq") {
+      data = await askGroq(fullMessages);
+      provider = "groq";
+    } else if (process.env.AI_PROVIDER === "comet") {
+      data = await askComet(fullMessages);
+      provider = "comet";
+    } else {
+      try {
+        if (COMETAPI_KEY) {
+          data = await askComet(fullMessages);
+          provider = "comet";
+        } else {
+          data = await askGroq(fullMessages);
+          provider = "groq";
+        }
+      } catch (firstError) {
+        if (GROQ_API_KEY && provider !== "groq") {
+          data = await askGroq(fullMessages);
+          provider = "groq";
+        } else {
+          throw firstError;
+        }
+      }
+    }
+
+    const answer = extractAnswer(data);
+
+    if (!answer) {
+      throw new Error("AI boş cavab qaytardı.");
+    }
+
     res.json({
-      success: true,
+      ok: true,
       answer,
-      model,
-      provider: "CometAPI Vision"
+      reply: answer,
+      provider
     });
   } catch (error) {
-    apiError(res, error, "Kamera görüntüsü analiz edilə bilmədi.");
+    console.error("CHAT ERROR:", error);
+    sendError(res, 500, error.message || "AI sorğusu zamanı xəta baş verdi.");
   }
 });
 
-// ==========================================
-// NANO BANANA IMAGE GENERATION
-// ==========================================
+/* ==========================================
+   CAMERA / VISION
+========================================== */
+
+app.post("/api/vision", async (req, res) => {
+  try {
+    if (!COMETAPI_KEY) {
+      return sendError(res, 503, "Kamera analizi üçün COMETAPI_KEY lazımdır.");
+    }
+
+    const { image, prompt } = req.body || {};
+
+    if (!image) {
+      return sendError(res, 400, "Şəkil göndərilməyib.");
+    }
+
+    const imageUrl = image.startsWith("data:")
+      ? image
+      : `data:image/jpeg;base64,${image}`;
+
+    const data = await fetchJson(`${COMET_BASE}/v1/chat/completions`, {
+      method: "POST",
+      headers: authHeaders(COMETAPI_KEY, {
+        "Content-Type": "application/json"
+      }),
+      body: JSON.stringify({
+        model: COMETAPI_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM_PROMPT
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: prompt || "Bu şəkli diqqətlə analiz et və gördüklərini izah et."
+              },
+              {
+                type: "image_url",
+                image_url: { url: imageUrl }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2000
+      })
+    });
+
+    const answer = extractAnswer(data);
+
+    res.json({
+      ok: true,
+      answer,
+      reply: answer
+    });
+  } catch (error) {
+    console.error("VISION ERROR:", error);
+    sendError(res, 500, error.message || "Şəkil analiz edilə bilmədi.");
+  }
+});
+
+/* ==========================================
+   IMAGE GENERATION
+========================================== */
 
 app.post("/api/generate-image", async (req, res) => {
   try {
-    if (!IMAGE_API_KEY) {
-      return res.status(503).json({
-        success: false,
-        error: "COMETAPI_KEY Render Environment-də əlavə edilməyib."
-      });
+    if (!COMETAPI_KEY) {
+      return sendError(res, 503, "Şəkil yaratmaq üçün COMETAPI_KEY lazımdır.");
     }
 
-    const prompt = typeof req.body?.prompt === "string"
-      ? req.body.prompt.trim()
-      : "";
+    const prompt = String(req.body?.prompt || "").trim();
+    const model = String(req.body?.model || IMAGE_MODEL);
 
     if (prompt.length < 3) {
-      return res.status(400).json({
-        success: false,
-        error: "Şəkil yaratmaq üçün təsvir yaz."
-      });
+      return sendError(res, 400, "Şəkil üçün təsvir yaz.");
     }
 
-    if (prompt.length > 4000) {
-      return res.status(400).json({
-        success: false,
-        error: "Təsvir maksimum 4000 simvol ola bilər."
-      });
-    }
+    const data = await fetchJson(`${COMET_BASE}/v1/images/generations`, {
+      method: "POST",
+      headers: authHeaders(COMETAPI_KEY, {
+        "Content-Type": "application/json"
+      }),
+      body: JSON.stringify({
+        model,
+        prompt,
+        n: 1,
+        size: req.body?.size || "1024x1024"
+      })
+    });
 
-    const response = await fetch(
-      `${IMAGE_API_URL}/${IMAGE_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": IMAGE_API_KEY
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            responseModalities: ["TEXT", "IMAGE"]
-          }
-        }),
-        signal: AbortSignal.timeout(180000)
-      }
-    );
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        success: false,
-        error:
-          data?.error?.message ||
-          data?.message ||
-          "Nano Banana şəkil yarada bilmədi."
-      });
-    }
-
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const imagePart = parts.find(part => part.inlineData?.data);
-
-    const description = parts
-      .filter(part => typeof part.text === "string")
-      .map(part => part.text)
-      .join("\n");
-
-    if (!imagePart) {
-      return res.status(502).json({
-        success: false,
-        error: "API şəkil qaytarmadı.",
-        details: description || "Şəkil məlumatı tapılmadı."
-      });
-    }
-
-    const mimeType = imagePart.inlineData.mimeType || "image/png";
-
-    if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType)) {
-      return res.status(502).json({
-        success: false,
-        error: "Dəstəklənməyən şəkil formatı."
-      });
-    }
+    const item = data?.data?.[0] || data?.images?.[0] || {};
+    const imageUrl = item.url || item.image_url || null;
+    const base64 = item.b64_json || item.base64 || null;
 
     res.json({
-      success: true,
-      provider: "CometAPI / Gemini Nano Banana",
-      model: IMAGE_MODEL,
-      image: `data:${mimeType};base64,${imagePart.inlineData.data}`,
-      mimeType,
-      description
+      ok: true,
+      url: imageUrl,
+      imageUrl,
+      image: base64 ? `data:image/png;base64,${base64}` : null,
+      data
     });
   } catch (error) {
-    apiError(res, error, "Şəkil yaradılarkən server xətası baş verdi.");
+    console.error("IMAGE ERROR:", error);
+    sendError(res, 500, error.message || "Şəkil yaratmaq mümkün olmadı.");
   }
 });
 
-// ==========================================
-// AI VIDEO GENERATION
-// ==========================================
+/* ==========================================
+   GENERAL VIDEO GENERATION
+========================================== */
 
 app.post("/api/videos", async (req, res) => {
   try {
-    requireCometKey();
+    if (!COMETAPI_KEY) {
+      return sendError(res, 503, "Video yaratmaq üçün COMETAPI_KEY lazımdır.");
+    }
 
-    const prompt = typeof req.body?.prompt === "string"
-      ? req.body.prompt.trim()
-      : "";
-
+    const prompt = String(req.body?.prompt || "").trim();
+    const model = String(req.body?.model || VIDEO_MODEL);
     const seconds = Number(req.body?.seconds || 5);
 
-    const model =
-      typeof req.body?.model === "string" && req.body.model.trim()
-        ? req.body.model.trim()
-        : VIDEO_MODEL;
-
-    if (prompt.length < 3 || prompt.length > 4000) {
-      return res.status(400).json({
-        error: "Video təsviri 3–4000 simvol arasında olmalıdır."
-      });
+    if (prompt.length < 3) {
+      return sendError(res, 400, "Video təsviri yazılmalıdır.");
     }
 
     if (![5, 10, 15].includes(seconds)) {
-      return res.status(400).json({
-        error: "Bu interfeysdə video müddəti 5, 10 və ya 15 saniyə ola bilər."
+      return sendError(res, 400, "Video müddəti 5, 10 və ya 15 saniyə olmalıdır.");
+    }
+
+    const data = await fetchJson(`${COMET_BASE}/v1/videos`, {
+      method: "POST",
+      headers: authHeaders(COMETAPI_KEY, {
+        "Content-Type": "application/json"
+      }),
+      body: JSON.stringify({
+        model,
+        prompt,
+        seconds,
+        duration: seconds,
+        size: req.body?.size || "1280x720"
+      })
+    });
+
+    const id = data?.id || data?.task_id || data?.data?.id;
+
+    if (!id) {
+      return res.json({
+        ok: true,
+        data,
+        message: "Video API cavabı alındı, lakin tapşırıq ID-si qaytarılmadı."
       });
     }
 
-    const models = await getModels();
-    const selected = models.find(item => item.id === model);
+    videoTasks.set(String(id), {
+      id: String(id),
+      provider: "comet-video",
+      status: data.status || "queued",
+      createdAt: Date.now()
+    });
 
-    i
+    res.json({
+      ok: true,
+      id: String(id),
+      jobId: String(id),
+      task_id: String(id),
+      status: data.status || "queued",
+      data
+    });
+  } catch (error) {
+    console.error("VIDEO GENERATION ERROR:", error);
+    sendError(res, 500, error.message || "Video yaratmaq mümkün olmadı.");
+  }
+});
+
+/* ==========================================
+   RUNWAY VIDEO INPUT UPLOAD
+========================================== */
+
+async function createRunwayVideoUri(file) {
+  if (RUNWAY_API_KEY) {
+    const createUpload = await fetchJson(
+      "https://api.dev.runwayml.com/v1/uploads",
+      {
+        method: "POST",
+        headers: authHeaders(RUNWAY_API_KEY, {
+          "Content-Type": "application/json",
+          "X-Runway-Version": RUNWAY_VERSION
+        }),
+        body: JSON.stringify({
+          filename: file.originalname || "f2-video.mp4",
+          type: "ephemeral"
+        })
+      }
+    );
+
+    if (!createUpload.uploadUrl || !createUpload.fields || !createUpload.runwayUri) {
+      throw new Error("Runway upload məlumatları düzgün qaytarılmadı.");
+    }
+
+    const form = new FormData();
+
+    for (const [key, value] of Object.entries(createUpload.fields)) {
+      form.append(key, String(value));
+    }
+
+    form.append(
+      "file",
+      new Blob([file.buffer], {
+        type: file.mimetype || "video/mp4"
+      }),
+      file.originalname || "f2-video.mp4"
+    );
+
+    const uploadResponse = await fetch(createUpload.uploadUrl, {
+      method: "POST",
+      body: form
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Runway fayl yükləmə xətası: ${uploadResponse.status}`);
+    }
+
+    return createUpload.runwayUri;
+  }
+
+  if (!COMETAPI_KEY) {
+    throw new Error("Video redaktəsi üçün RUNWAY_API_KEY və ya COMETAPI_KEY lazımdır.");
+  }
+
+  if (file.buffer.length > 5 * 1024 * 1024) {
+    throw new Error(
+      "CometAPI birbaşa video girişində 5 MB limitinə görə bu fayl böyükdür. RUNWAY_API_KEY əlavə et."
+    );
+  }
+
+  const mime = file.mimetype || "video/mp4";
+  return `data:${mime};base64,${file.buffer.toString("base64")}`;
+}
+
+async function runwayRequest(endpoint, body) {
+  const useRunway = Boolean(RUNWAY_API_KEY);
+  const base = useRunway
+    ? "https://api.dev.runwayml.com"
+    : `${COMET_BASE}/runwayml`;
+
+  const key = useRunway ? RUNWAY_API_KEY : COMETAPI_KEY;
+
+  if (!key) {
+    throw new Error("Runway və ya CometAPI açarı yoxdur.");
+  }
+
+  return fetchJson(`${base}${endpoint}`, {
+    method: "POST",
+    headers: authHeaders(key, {
+      "Content-Type": "application/json",
+      "X-Runway-Version": RUNWAY_VERSION
+    }),
+    body: JSON.stringify(body)
+  });
+}
+
+/* ==========================================
+   VIDEO EDITOR — EDIT
+========================================== */
+
+app.post("/api/videos/edit", upload.single("video"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return sendError(res, 400, "Redaktə üçün video faylı seçilməyib.");
+    }
+
+    const prompt = String(req.body?.prompt || "").trim();
+
+    if (prompt.length < 3) {
+      return sendError(res, 400, "Video redaktəsi üçün təsvir yaz.");
+    }
+
+    const videoUri = await createRunwayVideoUri(req.file);
+
+    const model = RUNWAY_API_KEY
+      ? "aleph2"
+      : String(req.body?.model || "gen4_aleph");
+
+    const data = await runwayRequest("/v1/video_to_video", {
+      model,
+      videoUri,
+      promptText: prompt,
+      outputFormat: "mp4"
+    });
+
+    const id = data?.id || data?.task_id;
+
+    if (!id) {
+      return res.json({
+        ok: true,
+        data,
+        message: "Video redaktə sorğusu göndərildi."
+      });
+    }
+
+    videoTasks.set(String(id), {
+      id: String(id),
+      provider: "runway",
+      status: data.status || "PENDING",
+      createdAt: Date.now()
+    });
+
+    res.json({
+      ok: true,
+      id: String(id),
+      jobId: String(id),
+      task_id: String(id),
+      status: data.status || "PENDING",
+      data
+    });
+  } catch (error) {
+    console.error("VIDEO EDIT ERROR:", error);
+    sendError(res, 500, error.message || "Video redaktəsi baş tutmadı.");
+  }
+});
+
+/* ==========================================
+   VIDEO EDITOR — UPSCALE
+========================================== */
+
+app.post("/api/videos/upscale", upload.single("video"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return sendError(res, 400, "Keyfiyyət artırmaq üçün video seçilməyib.");
+    }
+
+    const videoUri = await createRunwayVideoUri(req.file);
+
+    const quality = String(req.body?.quality || "4k").toLowerCase();
+    const resolution = quality === "720p" ? "720p" :
+      quality === "1080p" ? "1k" :
+      quality === "2k" ? "2k" : "4k";
+
+    const data = await runwayRequest("/v1/video_upscale", {
+      model: "upscale_v1",
+      videoUri,
+      resolution
+    });
+
+    const id = data?.id || data?.task_id;
+
+    if (!id) {
+      return res.json({
+        ok: true,
+        data,
+        message: "Video keyfiyyət artırma sorğusu göndərildi."
+      });
+    }
+
+    videoTasks.set(String(id), {
+      id: String(id),
+      provider: "runway",
+      status: data.status || "PENDING",
+      createdAt: Date.now()
+    });
+
+    res.json({
+      ok: true,
+      id: String(id),
+      jobId: String(id),
+      task_id: String(id),
+      status: data.status || "PENDING",
+      data
+    });
+  } catch (error) {
+    console.error("VIDEO UPSCALE ERROR:", error);
+    sendError(res, 500, error.message || "Video keyfiyyəti artırıla bilmədi.");
+  }
+});
+
+/* ==========================================
+   VIDEO TASK STATUS
+========================================== */
+
+app.get("/api/videos/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const task = videoTasks.get(id);
+
+    if (!task) {
+      return sendError(res, 404, "Video tapşırığı tapılmadı.");
+    }
+
+    let data;
+
+    if (task.provider === "runway") {
+      const useRunway = Boolean(RUNWAY_API_KEY);
+      const base = useRunway
+        ? "https://api.dev.runwayml.com"
+        : `${COMET_BASE}/runwayml`;
+
+      const key = useRunway ? RUNWAY_API_KEY : COMETAPI_KEY;
+
+      data = await fetchJson(`${base}/v1/tasks/${encodeURIComponent(id)}`, {
+        method: "GET",
+        headers: authHeaders(key, {
+          "X-Runway-Version": RUNWAY_VERSION
+        })
+      });
+    } else {
+      data = await fetchJson(
+        `${COMET_BASE}/v1/videos/${encodeURIComponent(id)}`,
+        {
+          method: "GET",
+          headers: authHeaders(COMETAPI_KEY)
+        }
+      );
+    }
+
+    const status = String(
+      data?.status || data?.task_status || data?.state || "processing"
+    ).toLowerCase();
+
+    const output =
+      data?.output ||
+      data?.outputs ||
+      data?.result ||
+      data?.data?.output ||
+      data?.data?.result ||
+      null;
+
+    const videoUrl =
+      data?.videoUrl ||
+      data?.video_url ||
+      data?.url ||
+      (Array.isArray(output) ? output[0] : output);
+
+    const normalizedStatus =
+      ["succeeded", "success", "completed", "complete"].includes(status)
+        ? "completed"
+        : ["failed", "error", "cancelled"].includes(status)
+          ? "failed"
+          : "processing";
+
+    videoTasks.set(id, {
+      ...task,
+      status: normalizedStatus,
+      updatedAt: Date.now()
+    });
+
+    res.json({
+      ok: true,
+      id,
+      status: normalizedStatus,
+      videoUrl: typeof videoUrl === "string" ? videoUrl : null,
+      video_url: typeof videoUrl === "string" ? videoUrl : null,
+      output,
+      error: data?.error || null,
+      data
+    });
+  } catch (error) {
+    console.error("VIDEO STATUS ERROR:", error);
+    sendError(res, 500, error.message || "Video statusu yoxlanıla bilmədi.");
+  }
+});
+
+/* ==========================================
+   SPEECH TO TEXT — GROQ WHISPER
+========================================== */
+
+app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
+  try {
+    if (!GROQ_API_KEY) {
+      return sendError(res, 503, "Səs tanıma üçün GROQ_API_KEY lazımdır.");
+    }
+
+    if (!req.file) {
+      return sendError(res, 400, "Audio faylı göndərilməyib.");
+    }
+
+    const form = new FormData();
+
+    form.append(
+      "file",
+      new Blob([req.file.buffer], {
+        type: req.file.mimetype || "audio/webm"
+      }),
+      req.file.originalname || "recording.webm"
+    );
+
+    form.append(
+      "model",
+      process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo"
+    );
+
+    form.append("response_format", "json");
+
+    const dat
