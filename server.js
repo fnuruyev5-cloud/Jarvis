@@ -28,9 +28,11 @@ const RUNWAY_API_KEY = process.env.RUNWAY_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GROQ_STT_MODEL = process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo";
 const GROQ_VISION_MODEL = process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
+const COMETAPI_STT_MODEL = process.env.COMETAPI_STT_MODEL || "whisper-1";
+const COMETAPI_VISION_MODEL = process.env.COMETAPI_VISION_MODEL || "deepseek-v4-flash-vision";
 const COMETAPI_MODEL = process.env.COMETAPI_MODEL || "claude-haiku-5-5";
 const VIDEO_MODEL = process.env.VIDEO_MODEL || "wan3.0-prime";
-const IMAGE_MODEL = process.env.IMAGE_MODEL || "gemini-nano-banana-2.1";
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2";
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 const COMET_BASE = "https://api.cometapi.com";
 const RUNWAY_VERSION = "2024-11-06";
@@ -142,8 +144,13 @@ app.get("/api/health", (_req, res) => {
     groqConfigured: Boolean(GROQ_API_KEY),
     cometConfigured: Boolean(COMETAPI_KEY),
     runwayConfigured: Boolean(RUNWAY_API_KEY),
-    voiceConfigured: Boolean(GROQ_API_KEY),
+    voiceConfigured: Boolean(GROQ_API_KEY || COMETAPI_KEY),
+    transcriptionProvider: GROQ_API_KEY ? "groq-whisper" : (COMETAPI_KEY ? "comet-whisper" : "not-configured"),
+    visionConfigured: Boolean(COMETAPI_KEY || GROQ_API_KEY),
+    visionModel: COMETAPI_KEY ? COMETAPI_VISION_MODEL : GROQ_VISION_MODEL,
     imageConfigured: Boolean(COMETAPI_KEY),
+    imageModel: IMAGE_MODEL,
+    videoModel: VIDEO_MODEL,
     videoConfigured: Boolean(COMETAPI_KEY),
     videoEditorConfigured: Boolean(RUNWAY_API_KEY || COMETAPI_KEY),
     history: "browser-local-storage"
@@ -204,57 +211,68 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-/* CAMERA / IMAGE VISION — Groq vision */
+/* CAMERA / IMAGE VISION — CometAPI preferred, Groq fallback */
 app.post("/api/vision", async (req, res) => {
   try {
-    if (!GROQ_API_KEY) return sendError(res, 503, "Kamera analizi üçün GROQ_API_KEY lazımdır.");
     const image = req.body?.image;
     const prompt = String(req.body?.prompt || "Bu görüntünü təsvir et.").slice(0, 2500);
     if (typeof image !== "string" || !/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(image)) {
       return sendError(res, 400, "Şəkil düzgün formatda göndərilməyib.");
     }
     if (image.length > 11000000) return sendError(res, 413, "Şəkil çox böyükdür.");
-    const data = await requestJson(`${GROQ_BASE}/chat/completions`, {
+
+    const provider = COMETAPI_KEY ? "comet" : (GROQ_API_KEY ? "groq" : null);
+    if (!provider) return sendError(res, 503, "Görüntü analizi üçün COMETAPI_KEY və ya GROQ_API_KEY lazımdır.");
+    const base = provider === "comet" ? COMET_BASE : GROQ_BASE;
+    const key = provider === "comet" ? COMETAPI_KEY : GROQ_API_KEY;
+    const model = provider === "comet" ? COMETAPI_VISION_MODEL : GROQ_VISION_MODEL;
+    const visionUrl = provider === "comet" ? `${COMET_BASE}/v1/chat/completions` : `${GROQ_BASE}/chat/completions`;
+    const data = await requestJson(visionUrl, {
       method: "POST",
-      headers: bearer(GROQ_API_KEY, { "Content-Type": "application/json" }),
+      headers: bearer(key, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        model: GROQ_VISION_MODEL,
+        model,
         temperature: 0.25,
         max_tokens: 1200,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: image } }
-          ]
-        }]
+        messages: [{ role: "user", content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: image } }
+        ] }]
       })
     });
     const answer = extractText(data);
     if (!answer) throw new Error("Vision modeli boş cavab qaytardı.");
-    res.json({ ok: true, answer, reply: answer });
+    res.json({ ok: true, answer, reply: answer, provider, model });
   } catch (err) {
     console.error("VISION ERROR:", err);
     sendError(res, 502, err.message || "Görüntü analiz edilə bilmədi.");
   }
 });
 
-/* IMAGE GENERATION */
+/* IMAGE GENERATION — CometAPI GPT Image */
 app.post("/api/generate-image", async (req, res) => {
   try {
-    if (!COMETAPI_KEY) return sendError(res, 503, "Şəkil yaratmaq üçün COMETAPI_KEY lazımdır.");
+    if (!COMETAPI_KEY) return sendError(res, 503, "Şəkil yaratmaq üçün COMETAPI_KEY Render Environment-də olmalıdır.");
     const prompt = String(req.body?.prompt || "").trim();
     if (prompt.length < 3) return sendError(res, 400, "Şəkil təsviri yaz.");
     const model = String(req.body?.model || IMAGE_MODEL);
+    const payload = { model, prompt, n: 1, size: req.body?.size || "1024x1024" };
+    if (req.body?.quality) payload.quality = String(req.body.quality);
     const data = await requestJson(`${COMET_BASE}/v1/images/generations`, {
       method: "POST",
       headers: bearer(COMETAPI_KEY, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ model, prompt, n: 1, size: req.body?.size || "1024x1024" })
-    });
-    const item = data?.data?.[0] || data?.images?.[0] || data?.result || {};
-    const imageUrl = item?.url || item?.image_url || data?.url || data?.image_url || null;
-    const b64 = item?.b64_json || item?.base64 || null;
-    res.json({ ok: true, url: imageUrl, imageUrl, image: b64 ? `data:image/png;base64,${b64}` : null, data });
+      body: JSON.stringify(payload),
+      }, 240000);
+    const root = data?.data || data?.result || data;
+    const item = Array.isArray(root) ? root[0] : (root?.data?.[0] || root?.images?.[0] || root);
+    const imageUrl = item?.url || item?.image_url || item?.imageUrl || data?.url || data?.image_url || null;
+    const b64 = item?.b64_json || item?.base64 || item?.image_base64 || item?.b64 || null;
+    const image = b64 ? `data:${item?.mime_type || "image/png"};base64,${b64}` : null;
+    if (!imageUrl && !image) {
+      console.error("IMAGE RESPONSE SHAPE:", JSON.stringify(data).slice(0, 2500));
+      throw new Error("CometAPI şəkil linki və ya base64 şəkil qaytarmadı. Seçilmiş modelin Image Generation dəstəyini yoxla.");
+    }
+    res.json({ ok: true, url: imageUrl, imageUrl, image, model, usage: data?.usage || null });
   } catch (err) {
     console.error("IMAGE ERROR:", err);
     sendError(res, 502, err.message || "Şəkil yaratmaq mümkün olmadı.");
@@ -386,37 +404,42 @@ app.get("/api/videos/:id", async (req, res) => {
         headers: bearer(COMETAPI_KEY)
       });
     }
-    const rawStatus = String(data?.status || data?.task_status || data?.state || "processing").toLowerCase();
-    const output = data?.output || data?.outputs || data?.result || data?.data?.output || data?.data?.result || null;
+    const taskData = data?.data && !Array.isArray(data.data) ? data.data : data;
+    const rawStatus = String(taskData?.status || taskData?.task_status || taskData?.state || "processing").toLowerCase();
+    const output = taskData?.output || taskData?.outputs || taskData?.result || taskData?.data?.output || taskData?.data?.result || null;
     const firstOutput = Array.isArray(output) ? output[0] : output;
-    const videoUrl = data?.videoUrl || data?.video_url || data?.url ||
+    const videoUrl = taskData?.videoUrl || taskData?.video_url || taskData?.url || taskData?.content_url ||
       (typeof firstOutput === "string" ? firstOutput : firstOutput?.url);
     const status = ["succeed", "succeeded", "success", "completed", "complete"].includes(rawStatus) ? "completed" :
       ["failed", "error", "cancelled"].includes(rawStatus) ? "failed" : "processing";
-    res.json({ ok: true, id, status, videoUrl: videoUrl || null, video_url: videoUrl || null, error: data?.error || null, data });
+    res.json({ ok: true, id, status, progress: taskData?.progress ?? null, videoUrl: videoUrl || null, video_url: videoUrl || null, error: taskData?.error || null, data });
   } catch (err) {
     console.error("VIDEO STATUS ERROR:", err);
     sendError(res, 502, err.message || "Video statusu alınmadı.");
   }
 });
 
-/* SPEECH TO TEXT — GROQ WHISPER */
+/* SPEECH TO TEXT — Groq Whisper or CometAPI Whisper fallback */
 app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   try {
-    if (!GROQ_API_KEY) return sendError(res, 503, "Səs tanıma üçün GROQ_API_KEY lazımdır.");
     if (!req.file) return sendError(res, 400, "Audio faylı göndərilməyib.");
+    if (!GROQ_API_KEY && !COMETAPI_KEY) return sendError(res, 503, "Səs tanıma üçün GROQ_API_KEY və ya COMETAPI_KEY lazımdır.");
+
+    const useGroq = Boolean(GROQ_API_KEY);
     const formData = new FormData();
     formData.append("file", new Blob([req.file.buffer], { type: req.file.mimetype || "audio/webm" }), req.file.originalname || "f2-recording.webm");
-    formData.append("model", GROQ_STT_MODEL);
+    formData.append("model", useGroq ? GROQ_STT_MODEL : COMETAPI_STT_MODEL);
     formData.append("response_format", "json");
-    const data = await requestJson(`${GROQ_BASE}/audio/transcriptions`, {
+    const base = useGroq ? GROQ_BASE : COMET_BASE;
+    const transcriptionUrl = useGroq ? `${GROQ_BASE}/audio/transcriptions` : `${COMET_BASE}/v1/audio/transcriptions`;
+    const data = await requestJson(transcriptionUrl, {
       method: "POST",
-      headers: bearer(GROQ_API_KEY),
+      headers: bearer(useGroq ? GROQ_API_KEY : COMETAPI_KEY),
       body: formData
-    });
-    const text = String(data?.text || "").trim();
+    }, 120000);
+    const text = String(data?.text || data?.transcript || "").trim();
     if (!text) return sendError(res, 422, "Səsdən mətn tanınmadı.");
-    res.json({ ok: true, text, transcript: text });
+    res.json({ ok: true, text, transcript: text, provider: useGroq ? "groq" : "comet" });
   } catch (err) {
     console.error("TRANSCRIBE ERROR:", err);
     sendError(res, 502, err.message || "Səs tanınmadı.");

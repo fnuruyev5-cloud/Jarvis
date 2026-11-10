@@ -648,8 +648,8 @@ async function checkHealth() {
     const response = await fetch('/api/health');
     const data = await response.json();
     $('connection').textContent = data.aiConfigured
-      ? (data.voiceConfigured ? 'AI + NEURAL SƏS AKTİVDİR' : 'AI AKTİVDİR · SƏS YOXDUR')
-      : 'GROQ API AÇARI LAZIMDIR';
+      ? (data.voiceConfigured ? 'AI + SƏS AKTİVDİR' : 'AI AKTİVDİR · SƏS AÇARI LAZIMDIR')
+      : 'COMETAPI / GROQ AÇARI LAZIMDIR';
   } catch {
     $('connection').textContent = 'SERVERƏ BAĞLANTI YOXDUR';
   }
@@ -689,7 +689,7 @@ async function generateImage(prompt) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Şəkil yaratmaq mümkün olmadı.');
     const url = data.image || data.imageUrl || data.url ||
-      data.data?.data?.[0]?.url || data.data?.url;
+      data.data?.data?.[0]?.url || data.data?.data?.[0]?.b64_json || data.data?.url;
     if (!url) throw new Error('Şəkil API-si link qaytarmadı. Model və API hesabını yoxla.');
     addImageMessage(url, prompt);
     setHint('Şəkil hazırdır.');

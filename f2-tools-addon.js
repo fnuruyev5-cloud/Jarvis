@@ -51,7 +51,7 @@
         <video id="f2veResult" controls playsinline></video>
         <a id="f2veDownload" download="f2-jarvis-video.mp4" target="_blank" rel="noopener">Videonu aç / yüklə</a>
       </div>
-      <p class="f2ve-note">Video redaktə və 4K artırma üçün Runway və ya uyğun CometAPI video xidməti, aktiv API açarı və kredit tələb olunur.</p>
+      <p class="f2ve-note">Diqqət: AI video yaratmaq pulsuz deyil. CometAPI Wan 3.0 Prime hazırkı siyahı qiyməti təxminən $0.0544/saniyədir (5 saniyə ≈ $0.27, 10 saniyə ≈ $0.54). Qiymət və kredit balansı dəyişə bilər. Sorğu göndərməzdən əvvəl CometAPI hesabındakı qiyməti yoxla.</p>
     </div>`;
 
   document.body.append(launcher, panel);
