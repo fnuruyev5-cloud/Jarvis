@@ -7,7 +7,7 @@ app.post("/api/vision", async (req,res)=>{
   if(!key)return res.status(503).json({error:"GROQ_API_KEY konfiqurasiya edilməyib."});
   const image=req.body?.image;
   const prompt=typeof req.body?.prompt==="string"?req.body.prompt.slice(0,2500):"Describe this image.";
-  if(typeof image!=="string"||!/^data:image\\/(png|jpeg|jpg|webp);base64,/.test(image))return res.status(400).json({error:"Etibarlı şəkil göndərilməyib."});
+  if(typeof image!=="string"||!/^data:image\/(png|jpeg|jpg|webp);base64,/.test(image))return res.status(400).json({error:"Etibarlı şəkil göndərilməyib."});
   if(image.length>11000000)return res.status(413).json({error:"Şəkil çox böyükdür."});
   const model=process.env.GROQ_VISION_MODEL||"meta-llama/llama-4-scout-17b-16e-instruct";
   const upstream=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,temperature:.25,max_tokens:900,messages:[{role:"user",content:[{type:"text",text:prompt},{type:"image_url",image_url:{url:image}}]}]}),signal:AbortSignal.timeout(60000)});

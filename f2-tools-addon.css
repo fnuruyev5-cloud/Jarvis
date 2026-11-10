@@ -173,3 +173,157 @@
     max-height: 91vh;
   }
 }
+
+
+/* F2 JARVIS chat tools and live camera */
+.f2-chat-tools {
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin:10px 0 4px;
+}
+.f2-chat-tool {
+  border:1px solid rgba(61,224,255,.28);
+  border-radius:11px;
+  padding:9px 12px;
+  background:rgba(61,224,255,.07);
+  color:#bdf6ff;
+  font:600 12px/1.2 Inter,Arial,sans-serif;
+  cursor:pointer;
+}
+.f2-chat-tool:active { transform:scale(.98); }
+.f2-chat-tool:disabled { opacity:.55; cursor:wait; }
+
+.f2-message-copy {
+  display:inline-block;
+  margin-top:10px;
+  padding:6px 11px;
+  border:1px solid rgba(61,224,255,.3);
+  border-radius:8px;
+  background:rgba(61,224,255,.08);
+  color:#65eaff;
+  font-size:11px;
+  cursor:pointer;
+}
+.f2-image-bubble img {
+  display:block;
+  width:min(100%,480px);
+  max-height:440px;
+  object-fit:contain;
+  margin-top:12px;
+  border-radius:13px;
+  background:#02060d;
+}
+.f2-image-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+}
+.f2-image-actions a {
+  display:inline-block;
+  margin-top:10px;
+  color:#8ceeff;
+  font-size:12px;
+}
+
+.f2-camera-dialog {
+  width:min(680px,calc(100vw - 24px));
+  max-width:none;
+  max-height:92vh;
+  padding:0;
+  border:1px solid rgba(61,224,255,.35);
+  border-radius:20px;
+  color:#eafaff;
+  background:#06101e;
+  box-shadow:0 20px 80px rgba(0,0,0,.65);
+}
+.f2-camera-dialog::backdrop { background:rgba(0,0,0,.78); backdrop-filter:blur(6px); }
+.f2-camera-card { padding:16px; }
+.f2-camera-card header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+  color:#65eaff;
+  font-size:13px;
+}
+.f2-camera-card header button {
+  border:0;
+  background:transparent;
+  color:#fff;
+  font-size:22px;
+}
+#f2CameraVideo {
+  width:100%;
+  max-height:55vh;
+  border-radius:13px;
+  background:#000;
+  object-fit:contain;
+}
+.f2-camera-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.f2-camera-actions button {
+  flex:1 1 135px;
+  border:1px solid rgba(61,224,255,.3);
+  border-radius:10px;
+  padding:10px;
+  background:rgba(61,224,255,.1);
+  color:#bdf6ff;
+  font-weight:700;
+}
+#f2CameraStatus {
+  margin:12px 0 0;
+  color:#a6c6d4;
+  font-size:12px;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+
+/* Video studio tabs and upload controls */
+.f2ve-tabs { display:flex; gap:6px; padding:10px 14px 0; }
+.f2ve-tabs button {
+  flex:1;
+  border:1px solid rgba(61,224,255,.18);
+  border-radius:9px;
+  padding:9px 5px;
+  background:#0b1727;
+  color:#9eb9c8;
+  font-size:11px;
+  font-weight:800;
+}
+.f2ve-tabs button.active {
+  color:#06131d;
+  background:#65eaff;
+  border-color:#65eaff;
+}
+.f2ve-view { display:none; }
+.f2ve-view.active { display:block; }
+.f2ve-view input[type=file] {
+  box-sizing:border-box;
+  width:100%;
+  padding:10px;
+  border:1px dashed rgba(61,224,255,.35);
+  border-radius:10px;
+  color:#dffaff;
+  background:#0b1727;
+  font-size:12px;
+}
+.f2ve-preview {
+  width:100%;
+  max-height:180px;
+  margin-top:10px;
+  border-radius:10px;
+  background:#000;
+}
+.f2ve-note {
+  color:#7f9aaa;
+  font-size:10px;
+  line-height:1.5;
+}
+#f2veStatus.error { color:#ff8585; }
+@media(max-width:600px) {
+  .f2-chat-tool { flex:1 1 auto; }
+  .f2-camera-card { padding:12px; }
+  .f2ve-tabs button { font-size:10px; }
+}

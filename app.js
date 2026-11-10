@@ -12,7 +12,30 @@ const stateLabel = $('stateLabel');
 const voiceHint = $('voiceHint');
 const settingsDialog = $('settingsDialog');
 
+const HISTORY_KEY = 'f2jarvis.chat.history.v2';
+const HISTORY_LIMIT = 80;
 let history = [];
+try {
+  const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  if (Array.isArray(saved)) {
+    history = saved.filter(item =>
+      item && ['user', 'assistant'].includes(item.role) &&
+      typeof item.content === 'string'
+    ).slice(-HISTORY_LIMIT);
+  }
+} catch (error) {
+  console.warn('Chat history could not be restored:', error);
+}
+
+function saveHistory() {
+  try {
+    history = history.slice(-HISTORY_LIMIT);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.warn('Chat history could not be saved:', error);
+    setHint('Söhbət yaddaşı dolub. Köhnə mesajları təmizləyə bilərsən.');
+  }
+}
 let currentAudio = null;
 let currentAudioUrl = null;
 let audioDone = null;
@@ -58,7 +81,39 @@ function setVoiceButton(active) {
   voiceBtn.textContent = active ? '■' : '🎙';
 }
 
+function copyText(text, button) {
+  const value = String(text || '');
+  const fallback = () => {
+    const area = document.createElement('textarea');
+    area.value = value;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    area.remove();
+  };
+
+  const done = () => {
+    if (!button) return;
+    const old = button.textContent;
+    button.textContent = 'Kopyalandı ✓';
+    setTimeout(() => { button.textContent = old || 'Kopyala'; }, 1400);
+  };
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(value).then(done).catch(() => {
+      fallback();
+      done();
+    });
+  } else {
+    fallback();
+    done();
+  }
+}
+
 function addMessage(role, text) {
+  if (!messagesEl) return null;
   const row = document.createElement('div');
   row.className = `message ${role}`;
   const bubble = document.createElement('div');
@@ -79,11 +134,54 @@ function addMessage(role, text) {
     row.append(bubble);
   }
 
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'f2-message-copy';
+  copy.textContent = 'Kopyala';
+  copy.setAttribute('aria-label', 'Mesajı kopyala');
+  copy.addEventListener('click', () => copyText(text, copy));
+  bubble.append(copy);
+
   messagesEl.append(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return row;
 }
 
+function addImageMessage(url, prompt) {
+  if (!messagesEl || !url) return;
+  const row = document.createElement('div');
+  row.className = 'message assistant';
+  const avatar = document.createElement('div');
+  avatar.className = 'bot-avatar';
+  avatar.textContent = 'F2';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble f2-image-bubble';
+  const title = document.createElement('b');
+  title.textContent = 'F2 JARVIS · Yaradılmış şəkil';
+  const caption = document.createElement('p');
+  caption.textContent = prompt || 'Şəkil hazırdır.';
+  const image = document.createElement('img');
+  image.src = url;
+  image.alt = 'F2 JARVIS tərəfindən yaradılmış şəkil';
+  image.loading = 'lazy';
+  const actions = document.createElement('div');
+  actions.className = 'f2-image-actions';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'f2-message-copy';
+  copy.textContent = 'Promptu kopyala';
+  copy.addEventListener('click', () => copyText(prompt, copy));
+  const download = document.createElement('a');
+  download.href = url;
+  download.target = '_blank';
+  download.rel = 'noopener';
+  download.textContent = 'Şəkli aç';
+  actions.append(copy, download);
+  bubble.append(title, caption, image, actions);
+  row.append(avatar, bubble);
+  messagesEl.append(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
 function detectLanguage(text) {
   const t = text.toLowerCase();
   if (/[а-яё]/i.test(text)) return 'ru';
@@ -123,7 +221,7 @@ async function speak(text) {
     const response = await fetch('/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, languageCode: lastUserLanguage })
+      body: JSON.stringify({ text, language: lastUserLanguage, languageCode: lastUserLanguage })
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -472,6 +570,7 @@ async function askJarvis(text, shouldSpeak = true) {
 
   busy = true;
   history.push({ role: 'user', content: clean });
+  saveHistory();
   addMessage('user', clean);
   input.value = '';
   sendBtn.disabled = true;
@@ -495,6 +594,7 @@ async function askJarvis(text, shouldSpeak = true) {
 
     const answer = data.answer || 'Cavab alınmadı.';
     history.push({ role: 'assistant', content: answer });
+    saveHistory();
     typing.remove();
     addMessage('assistant', answer);
     busy = false;
@@ -516,20 +616,21 @@ async function askJarvis(text, shouldSpeak = true) {
   }
 }
 
-form.addEventListener('submit', async event => {
+form?.addEventListener('submit', async event => {
   event.preventDefault();
-  const text = input.value.trim();
+  const text = input?.value?.trim();
   if (!text) return;
   if (voiceMode) stopCurrentSegment(true);
   await askJarvis(text, false);
   if (voiceMode && !speaking && !busy) scheduleSegment(500);
 });
 
-voiceBtn.addEventListener('click', startVoiceMode);
+voiceBtn?.addEventListener('click', startVoiceMode);
 
 $('clearBtn')?.addEventListener('click', () => {
   history = [];
-  messagesEl.innerHTML = '';
+  saveHistory();
+  if (messagesEl) messagesEl.innerHTML = '';
   addMessage('assistant', 'Söhbət təmizləndi. Yeni sualını verə bilərsən.');
 });
 
@@ -558,3 +659,227 @@ checkHealth();
 window.addEventListener('pagehide', () => {
   stopVoiceMode(false);
 });
+
+
+/* ==========================================
+   F2 CHAT TOOLS — IMAGE + LIVE CAMERA CHAT
+========================================== */
+
+function askForImagePrompt() {
+  const prompt = window.prompt('Yaratmaq istədiyin şəkli təsvir et:');
+  if (!prompt || prompt.trim().length < 3) return;
+  generateImage(prompt.trim());
+}
+
+async function generateImage(prompt) {
+  const button = $('imageToolBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'YARADILIR...';
+  }
+  setState('thinking', 'ŞƏKİL HAZIRLANIR');
+  setHint('AI şəkli hazırlayır. Bir az gözlə...');
+
+  try {
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Şəkil yaratmaq mümkün olmadı.');
+    const url = data.image || data.imageUrl || data.url ||
+      data.data?.data?.[0]?.url || data.data?.url;
+    if (!url) throw new Error('Şəkil API-si link qaytarmadı. Model və API hesabını yoxla.');
+    addImageMessage(url, prompt);
+    setHint('Şəkil hazırdır.');
+  } catch (error) {
+    addMessage('assistant', `Şəkil yaratma xətası: ${error.message}`);
+    setHint(error.message);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = '✦ Şəkil yarat';
+    }
+    setState(voiceMode ? 'listening' : 'idle',
+      voiceMode ? 'SƏNİ DİNLƏYİRƏM' : 'SİSTEM HAZIRDIR');
+  }
+}
+
+let liveCameraStream = null;
+let liveCameraTimer = null;
+let liveCameraBusy = false;
+
+function ensureCameraDialog() {
+  let dialog = $('f2LiveCameraDialog');
+  if (dialog) return dialog;
+
+  dialog = document.createElement('dialog');
+  dialog.id = 'f2LiveCameraDialog';
+  dialog.className = 'f2-camera-dialog';
+  dialog.innerHTML = `
+    <div class="f2-camera-card">
+      <header><strong>F2 JARVIS · CANLI GÖRÜNTÜLÜ SÖHBƏT</strong>
+        <button type="button" id="f2CameraClose" aria-label="Bağla">✕</button>
+      </header>
+      <video id="f2CameraVideo" autoplay muted playsinline></video>
+      <div class="f2-camera-actions">
+        <button type="button" id="f2CameraStart">Kameranı aç</button>
+        <button type="button" id="f2CameraAsk">AI-yə göstər</button>
+        <button type="button" id="f2CameraLive">Canlı analizi başlat</button>
+        <button type="button" id="f2CameraVoice">🎙 Mikrofonu başlat</button>
+        <button type="button" id="f2CameraStop">Dayandır</button>
+      </div>
+      <p id="f2CameraStatus">Kameranı açmaq üçün düyməyə bas.</p>
+    </div>`;
+  document.body.append(dialog);
+
+  $('f2CameraClose').addEventListener('click', closeLiveCamera);
+  $('f2CameraStart').addEventListener('click', startLiveCamera);
+  $('f2CameraAsk').addEventListener('click', () => analyzeCameraFrame(false));
+  $('f2CameraLive').addEventListener('click', toggleLiveAnalysis);
+  $('f2CameraVoice').addEventListener('click', async () => {
+    if (voiceMode) {
+      stopVoiceMode();
+      $('f2CameraVoice').textContent = '🎙 Mikrofonu başlat';
+    } else {
+      await startVoiceMode();
+      $('f2CameraVoice').textContent = voiceMode ? '■ Mikrofonu dayandır' : '🎙 Mikrofonu başlat';
+    }
+  });
+  $('f2CameraStop').addEventListener('click', stopLiveCamera);
+  dialog.addEventListener('click', event => {
+    if (event.target === dialog) closeLiveCamera();
+  });
+  return dialog;
+}
+
+function cameraStatus(text) {
+  const el = $('f2CameraStatus');
+  if (el) el.textContent = text;
+}
+
+async function openLiveCamera() {
+  const dialog = ensureCameraDialog();
+  if (!dialog.open) dialog.showModal();
+  if (!liveCameraStream) await startLiveCamera();
+}
+
+async function startLiveCamera() {
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Kamera üçün HTTPS və müasir Chrome lazımdır.');
+    }
+    if (liveCameraStream) return;
+    liveCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    const video = $('f2CameraVideo');
+    video.srcObject = liveCameraStream;
+    await video.play();
+    cameraStatus('Kamera aktivdir. AI-yə göstər düyməsinə bas və ya canlı analizi başlat.');
+  } catch (error) {
+    cameraStatus(`Kamera açıla bilmədi: ${error.message}`);
+  }
+}
+
+async function analyzeCameraFrame(automatic = false) {
+  if (liveCameraBusy) return;
+  const video = $('f2CameraVideo');
+  if (!video || !video.videoWidth) {
+    cameraStatus('Əvvəlcə kameranı aç.');
+    return;
+  }
+
+  liveCameraBusy = true;
+  cameraStatus(automatic ? 'Canlı görüntü analiz edilir...' : 'Görüntü AI-yə göndərilir...');
+  try {
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 960 / video.videoWidth);
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const image = canvas.toDataURL('image/jpeg', 0.72);
+    const prompt = automatic
+      ? 'Bu canlı kamera kadrını analiz et. Əvvəlki müşahidədən fərqli olan vacib dəyişiklikləri qısa izah et. Görmədiyin şeyi uydurma.'
+      : 'Kamerada nə görürsən? Ətraflı, amma aydın şəkildə izah et.';
+
+    const response = await fetch('/api/vision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image, prompt })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'AI görüntünü analiz edə bilmədi.');
+
+    const answer = data.answer || data.reply || 'Görüntü analiz edildi.';
+    const visualPrompt = automatic
+      ? '[Canlı kamera görüntüsü] Son görüntüdə müşahidə edilənləri təhlil et.'
+      : '[Kamera görüntüsü] Kamerada nə olduğunu təhlil et.';
+    history.push({ role: 'user', content: visualPrompt });
+    history.push({ role: 'assistant', content: answer });
+    saveHistory();
+    if (!automatic) addMessage('user', '📷 Kamera görüntüsünü analiz et.');
+    addMessage('assistant', answer);
+    cameraStatus(answer);
+    if (autoSpeak && speakEnabled) await speak(answer);
+  } catch (error) {
+    cameraStatus(`Analiz xətası: ${error.message}`);
+  } finally {
+    liveCameraBusy = false;
+  }
+}
+
+function toggleLiveAnalysis() {
+  if (liveCameraTimer) {
+    clearInterval(liveCameraTimer);
+    liveCameraTimer = null;
+    cameraStatus('Canlı analiz dayandırıldı.');
+    $('f2CameraLive').textContent = 'Canlı analizi başlat';
+    return;
+  }
+  if (!liveCameraStream) {
+    cameraStatus('Əvvəlcə kameranı aç.');
+    return;
+  }
+  $('f2CameraLive').textContent = 'Canlı analizi dayandır';
+  analyzeCameraFrame(true);
+  liveCameraTimer = setInterval(() => analyzeCameraFrame(true), 9000);
+  cameraStatus('Canlı analiz aktivdir. Təxminən 9 saniyədən bir kadr AI-yə göndərilir.');
+}
+
+function stopLiveCamera() {
+  if (liveCameraTimer) clearInterval(liveCameraTimer);
+  liveCameraTimer = null;
+  if (liveCameraStream) liveCameraStream.getTracks().forEach(track => track.stop());
+  liveCameraStream = null;
+  const video = $('f2CameraVideo');
+  if (video) video.srcObject = null;
+  if ($('f2CameraLive')) $('f2CameraLive').textContent = 'Canlı analizi başlat';
+  cameraStatus('Kamera dayandırıldı.');
+}
+
+function closeLiveCamera() {
+  stopLiveCamera();
+  const dialog = $('f2LiveCameraDialog');
+  if (dialog?.open) dialog.close();
+}
+
+$('imageToolBtn')?.addEventListener('click', askForImagePrompt);
+$('cameraToolBtn')?.addEventListener('click', openLiveCamera);
+
+/* Restore the last conversation after refresh. */
+if (history.length && messagesEl) {
+  messagesEl.innerHTML = '';
+  history.forEach(item => addMessage(item.role, item.content));
+}
+window.F2JARVIS = {
+  ask: text => askJarvis(String(text || ''), false),
+  generateImage,
+  openCamera: openLiveCamera,
+  startVoice: startVoiceMode,
+  stopVoice: stopVoiceMode,
+  getHistory: () => history.slice()
+};
